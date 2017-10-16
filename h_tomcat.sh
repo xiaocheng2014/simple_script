@@ -53,6 +53,8 @@ function tomcat_restart(){
         tomcat_start
 }
 case "$1" in
+        clear)
+                echo "" > ${H_TOMCAT_HOME}/logs/catalina.out ;;
         log)
                 tail -f ${H_TOMCAT_HOME}/logs/catalina.out ;;
         java)
@@ -66,5 +68,5 @@ case "$1" in
         restart)
                 tomcat_restart ;;
         *)
-                echo "Help:h_tomcat [log|java|status|stop|start|restart]" ;;
+                echo "Help:h_tomcat [clear|log|java|status|stop|start|restart]" ;;
 esac
