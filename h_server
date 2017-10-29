@@ -152,6 +152,10 @@ function goMeth(){
 		else
 			sshStr="ssh"
 		fi 
+		if [ "$3" != "" ]
+		then
+		 	user="$3"
+		fi
 		eval $sshStr $user"@"$host" -p "$port
 	fi
 
@@ -172,6 +176,10 @@ function scpMeth(){
 		echo "机器不存在"
 		return 0
 	else
+		if [ "$5" != "" ]
+		then
+			user="$5"
+		fi
 		serverLink=$user"@"$host
 		if [[ $1 = 'download' ]]
 		then
@@ -188,8 +196,8 @@ function helpMeth(){
         add) echo -e "命令:h_server add.\t\t添加服务器,按提示添加服务器信息" ;;
         edit) echo -e "命令:h_server edit [name].\t\t编辑服务器,可以直接加机器名称,也可以根据提示输入机器名" ;;
         delete) echo -e "命令:h_server delete [name].\t\t删除服务器,可以直接加机器名称,也可以根据提示输入机器名" ;;
-        go) echo -e "命令:h_server go [name] [meth].\t\t跳转到服务器,有三种方式,ssh(默认),debug,sftp." ;;
-        scp) echo -e "命令:h_server scp [upload|download].\t\t上传文件到服务器或者从服务器上下载文件\r\n h_server scp upload [本地文件地址] [服务器名][存放文件的远程服务器地址]\t\t \r\nh_server scp download [服务器名] [远程服务器文件地址] [本地存放文件地址]" ;;
+        go) echo -e "命令:h_server go [name] [meth] [user].\t\t跳转到服务器,有三种方式,ssh(默认),debug,sftp." ;;
+        scp) echo -e "命令:h_server scp [upload|download].\t\t上传文件到服务器或者从服务器上下载文件\r\n h_server scp upload [本地文件地址] [服务器名][存放文件的远程服务器地址] [其他用户]\t\t \r\nh_server scp download [服务器名] [远程服务器文件地址] [本地存放文件地址] [其他用户]" ;;
         *) echo -e "请查看详细命令,命令有add,list,edit,delete,go,scp" ;;
 	esac
 }
@@ -203,9 +211,9 @@ case "$1" in
 	delete)
 		deleteMeth $2 ;; #删除服务器
 	go)
-		goMeth $2 $3 ;; #ssh跳到服务器上
+		goMeth $2 $3 $4 ;; #ssh跳到服务器上
 	scp)
-		scpMeth $2 $3 $4 $5 ;; #上传下载服务器
+		scpMeth $2 $3 $4 $5 $6;; #上传下载服务器
 	help)
 		helpMeth $2 ;; #命令帮助
 	*)
