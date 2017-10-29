@@ -1,0 +1,213 @@
+#!/bin/bash
+iniFile="$HOME/.h_server/.ini"
+iniDir="$HOME/.h_server"
+function listMeth(){
+	if [ ! -f "$iniFile" ]	
+	then
+		echo "没有添加任何机器"	
+	else
+		showList				
+	fi
+}
+function showList(){
+	awk -F : '{print("--------------\r\n主机名:"$1"\r\nhost:"$2"\r\n端口号:"$3"\r\n默认用户名:"$4"\r\n描述、备注:"$5)}' $iniFile |more
+}
+function addMeth(){
+	if [ ! -d "$iniDir" ]
+	then
+		mkdir $iniDir;chmod 700 $iniDir;
+	fi
+
+	if [ ! -f "$iniFile" ]
+	then
+		touch $iniFile;chmod 600 $iniFile;
+	fi
+	
+	NAME=""
+	while [ "$NAME" == "" ]
+	do
+		echo "请输入机器名称name(唯一名称):"
+		read NAME
+	done
+
+	HOST=""
+	while [ "$HOST" == "" ]
+	do
+		echo "请输入host:"
+		read HOST
+	done
+
+	echo "请输入端口号(不输入直接回车默认为22):"
+	read PORT
+	if [ "$PORT" == "" ]
+	then
+		PORT=22
+	fi
+	echo "请输入默认用户名(不输入直接回车默认为root)":
+	read USER
+	if [ "$USER" == "" ]
+	then
+		USER="root"
+	fi	
+	echo "请输入机器描述(不要有英文冒号，这里可以注上备注)"
+	read DESC
+	echo "$NAME:$HOST:$PORT:$USER:$DESC" >> $iniFile
+}
+function editMeth(){
+	name="$1"
+	while [ "$name" == "" ]
+	do
+		echo "请输入要修改的机器名称name"
+		read name
+	done
+	
+	eval $(awk -F : '$1 ~ /^'$name'$/ {print "host="$2";port="$3";user="$4";desc="$5}' $iniFile)
+	if [ "$host" == "" ]
+	then
+		echo "机器不存在"
+		return 0
+	else
+		echo $host,$port,$user,$desc
+	fi
+
+	echo "请输入新的host(不更改直接回车,原host为"$host"):"
+	read HOST
+	if [ "$HOST" == "" ]
+	then
+		HOST="$host"
+	fi
+
+	echo "请输入新的端口号(不更改直接回车,原端口号为"$port"):"
+	read PORT
+	if [ "$PORT" == "" ]
+	then
+		PORT="$port"
+	fi
+
+	echo "请输入新的默认用户名(不更改直接回车,原默认用户名为"$user"):"
+	read USER
+	if [ "$USER" == "" ]
+	then
+		USER="$user"
+	fi
+
+	echo "请输入新的机器描述(不更改直接回车,原机器描述为"$desc"):"
+	read DESC
+	if [ "$DESC" == "" ]
+	then
+		DESC="$desc"
+	fi
+	sed -ig "s/^"$name".*$/"$name":"$HOST":"$PORT":"$USER":"$DESC"/" $iniFile
+	if [ "$?" == "0" ]
+	then
+		echo "修改成功"
+	else
+		echo "修改失败"
+	fi
+}
+function deleteMeth(){
+	name="$1"
+	while [ "$name" == "" ]
+	do
+		echo "请输入要删除的机器名称name"
+		read name
+	done
+
+	flag=$(awk -F : '$1 ~ /^'$name'$/ {print "1"}' $iniFile)
+	if [ $flag == "" ]
+	then
+		echo "该机器不存在"
+	else
+		sed -ig '/^'$name":/d" $iniFile
+		if [ "$?" == "0" ]
+		then
+			echo "删除成功"
+		else
+			echo "删除失败"
+		fi
+	fi
+}
+function goMeth(){
+	name="$1"
+	while [ "$name" == "" ]
+	do
+		echo "请输入要跳转的机器名称name"
+		awk -F : '{print $1} END{print "---------"}' $iniFile
+		read name
+	done
+
+	eval $(awk -F : '$1 ~ /^'$name'$/ {print "host="$2";port="$3";user="$4";desc="$5}' $iniFile)
+
+	if [ "$host" == "" ]
+	then
+		echo "机器不存在"
+		return 0
+	else
+		if [ "$2" = 'sftp' ]
+		then
+			sshStr='sftp'
+		elif [ "$2" = 'debug' ]
+		then
+			sshStr='ssh -R 9001:localhost:9001 '
+		else
+			sshStr="ssh"
+		fi 
+		eval $sshStr $user"@"$host" -p "$port
+	fi
+
+}
+function scpMeth(){
+	scpStr="scp"
+	serverLink=""
+	if [[ $1 = 'download' ]]
+	then
+		serverLink=$2
+	elif [[ $1 = 'upload' ]]
+	then
+		serverLink=$3
+	fi	
+	eval $(awk -F : '$1 ~ /^'$serverLink'$/ {print "host="$2";port="$3";user="$4";desc="$5}' $iniFile)
+	if [ "$host" == "" ]
+	then
+		echo "机器不存在"
+		return 0
+	else
+		serverLink=$user"@"$host
+		if [[ $1 = 'download' ]]
+		then
+			eval "scp -P "$port" "$serverLink":"$3" "$4
+		elif [[ $1 = 'upload' ]]
+		then
+			eval "scp -P "$port" "$2" "$serverLink":"$4
+		fi	
+	fi
+}
+function helpMeth(){
+	case "$1"  in
+        list) echo -e "命令:h_server list.\t\t查看已经存在的机器详细信息." ;;
+        add) echo -e "命令:h_server add.\t\t添加服务器,按提示添加服务器信息" ;;
+        edit) echo -e "命令:h_server edit [name].\t\t编辑服务器,可以直接加机器名称,也可以根据提示输入机器名" ;;
+        delete) echo -e "命令:h_server delete [name].\t\t删除服务器,可以直接加机器名称,也可以根据提示输入机器名" ;;
+        go) echo -e "命令:h_server go [name] [meth].\t\t跳转到服务器,有三种方式,ssh(默认),debug,sftp." ;;
+        scp) echo -e "命令:h_server scp [upload|download].\t\t上传文件到服务器或者从服务器上下载文件\r\n h_server scp upload [本地文件地址] [服务器名][存放文件的远程服务器地址]\t\t \r\nh_server scp download [服务器名] [远程服务器文件地址] [本地存放文件地址]" ;;
+        *) echo -e "请查看详细命令,命令有add,list,edit,delete,go,scp" ;;
+	esac
+}
+case "$1" in
+	add)
+		addMeth ;;	#添加服务器
+	list)
+		listMeth ;;	#查看服务器列表
+	edit)
+		editMeth $2 ;; #修改服务器 
+	delete)
+		deleteMeth $2 ;; #删除服务器
+	go)
+		goMeth $2 $3 ;; #ssh跳到服务器上
+	scp)
+		scpMeth $2 $3 $4 $5 ;; #上传下载服务器
+	help)
+		helpMeth $2 ;; #命令帮助
+	*)
+		echo "Help :h_server [add|list|edit|delete|go|scp]" ;;
+esac
