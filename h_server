@@ -4,7 +4,7 @@ iniDir="$HOME/.h_server"
 function listMeth(){
 	if [ ! -f "$iniFile" ]	
 	then
-		echo "没有添加任何机器"	
+		echo -e  "\033[31m没有添加任何机器\033[0m"
 	else
 		showList				
 	fi
@@ -26,30 +26,30 @@ function addMeth(){
 	NAME=""
 	while [ "$NAME" == "" ]
 	do
-		echo "请输入机器名称name(唯一名称):"
+		echo -e "\033[32m请输入机器名称name(唯一名称):\033[0m"
 		read NAME
 	done
 
 	HOST=""
 	while [ "$HOST" == "" ]
 	do
-		echo "请输入host:"
+		echo -e "\033[32m请输入host:\033[0m"
 		read HOST
 	done
 
-	echo "请输入端口号(不输入直接回车默认为22):"
+	echo -e "\033[32m请输入端口号(不输入直接回车默认为22):\033[0m"
 	read PORT
 	if [ "$PORT" == "" ]
 	then
 		PORT=22
 	fi
-	echo "请输入默认用户名(不输入直接回车默认为root)":
+	echo -e "\033[32m请输入默认用户名(不输入直接回车默认为root):\033[0m"
 	read USER
 	if [ "$USER" == "" ]
 	then
 		USER="root"
 	fi	
-	echo "请输入机器描述(不要有英文冒号，这里可以注上备注)"
+	echo -e "\033[32m请输入机器描述(不要有英文冒号，这里可以注上备注):\033[0m"
 	read DESC
 	echo "$NAME:$HOST:$PORT:$USER:$DESC" >> $iniFile
 }
@@ -57,41 +57,41 @@ function editMeth(){
 	name="$1"
 	while [ "$name" == "" ]
 	do
-		echo "请输入要修改的机器名称name"
+		echo -e "\033[32m请输入要修改的机器名称name:\033[0m"
 		read name
 	done
 	
 	eval $(awk -F : '$1 ~ /^'$name'$/ {print "host="$2";port="$3";user="$4";desc="$5}' $iniFile)
 	if [ "$host" == "" ]
 	then
-		echo "机器不存在"
+		echo -e "\033[31m机器不存在\033[0m"
 		return 0
 	else
 		echo $host,$port,$user,$desc
 	fi
 
-	echo "请输入新的host(不更改直接回车,原host为"$host"):"
+	echo -e  "\033[32m请输入新的host(不更改直接回车,原host为"$host"):\033[0m"
 	read HOST
 	if [ "$HOST" == "" ]
 	then
 		HOST="$host"
 	fi
 
-	echo "请输入新的端口号(不更改直接回车,原端口号为"$port"):"
+	echo -e "\033[32m请输入新的端口号(不更改直接回车,原端口号为"$port"):\033[0m"
 	read PORT
 	if [ "$PORT" == "" ]
 	then
 		PORT="$port"
 	fi
 
-	echo "请输入新的默认用户名(不更改直接回车,原默认用户名为"$user"):"
+	echo -e "\033[32m请输入新的默认用户名(不更改直接回车,原默认用户名为"$user"):\033[0m"
 	read USER
 	if [ "$USER" == "" ]
 	then
 		USER="$user"
 	fi
 
-	echo "请输入新的机器描述(不更改直接回车,原机器描述为"$desc"):"
+	echo "\033[32m请输入新的机器描述(不更改直接回车,原机器描述为"$desc"):\033[0m"
 	read DESC
 	if [ "$DESC" == "" ]
 	then
@@ -100,30 +100,30 @@ function editMeth(){
 	sed -ig "s/^"$name".*$/"$name":"$HOST":"$PORT":"$USER":"$DESC"/" $iniFile
 	if [ "$?" == "0" ]
 	then
-		echo "修改成功"
+		echo -e "\033[32m修改成功\033[0m"
 	else
-		echo "修改失败"
+		echo -e "\033[31m修改失败\033[0m"
 	fi
 }
 function deleteMeth(){
 	name="$1"
 	while [ "$name" == "" ]
 	do
-		echo "请输入要删除的机器名称name"
+		echo -e "\033[32m请输入要删除的机器名称name:\033[0m"
 		read name
 	done
 
 	flag=$(awk -F : '$1 ~ /^'$name'$/ {print "1"}' $iniFile)
 	if [ $flag == "" ]
 	then
-		echo "该机器不存在"
+		echo -e "\033[32m该机器不存在\033[0m"
 	else
 		sed -ig '/^'$name":/d" $iniFile
 		if [ "$?" == "0" ]
 		then
-			echo "删除成功"
+			echo -e  "\033[32m删除成功\033[0m"
 		else
-			echo "删除失败"
+			echo -e "\033[31m删除失败\033[0m"
 		fi
 	fi
 }
@@ -131,7 +131,7 @@ function goMeth(){
 	name="$1"
 	while [ "$name" == "" ]
 	do
-		echo "请输入要跳转的机器名称name"
+		echo -e "\033[32m请输入要跳转的机器名称name:\033[0m"
 		awk -F : '{print $1} END{print "---------"}' $iniFile
 		read name
 	done
@@ -140,7 +140,7 @@ function goMeth(){
 
 	if [ "$host" == "" ]
 	then
-		echo "机器不存在"
+		echo -e "\033[31m机器不存在\033[0m"
 		return 0
 	else
 		if [ "$2" = 'sftp' ]
@@ -173,7 +173,7 @@ function scpMeth(){
 	eval $(awk -F : '$1 ~ /^'$serverLink'$/ {print "host="$2";port="$3";user="$4";desc="$5}' $iniFile)
 	if [ "$host" == "" ]
 	then
-		echo "机器不存在"
+		echo -e "\033[31m机器不存在\033[0m"
 		return 0
 	else
 		if [ "$5" != "" ]
@@ -192,13 +192,13 @@ function scpMeth(){
 }
 function helpMeth(){
 	case "$1"  in
-        list) echo -e "命令:h_server list.\t\t查看已经存在的机器详细信息." ;;
-        add) echo -e "命令:h_server add.\t\t添加服务器,按提示添加服务器信息" ;;
-        edit) echo -e "命令:h_server edit [name].\t\t编辑服务器,可以直接加机器名称,也可以根据提示输入机器名" ;;
-        delete) echo -e "命令:h_server delete [name].\t\t删除服务器,可以直接加机器名称,也可以根据提示输入机器名" ;;
-        go) echo -e "命令:h_server go [name] [meth] [user].\t\t跳转到服务器,有三种方式,ssh(默认),debug,sftp." ;;
-        scp) echo -e "命令:h_server scp [upload|download].\t\t上传文件到服务器或者从服务器上下载文件\r\n h_server scp upload [本地文件地址] [服务器名][存放文件的远程服务器地址] [其他用户]\t\t \r\nh_server scp download [服务器名] [远程服务器文件地址] [本地存放文件地址] [其他用户]" ;;
-        *) echo -e "请查看详细命令,命令有add,list,edit,delete,go,scp" ;;
+        list) echo -e "\033[32m命令:h_server list.\t\t查看已经存在的机器详细信息.\033[0m" ;;
+        add) echo -e "\033[32m命令:h_server add.\t\t添加服务器,按提示添加服务器信息\033[0m" ;;
+        edit) echo -e "\033[32m命令:h_server edit [name].\t\t编辑服务器,可以直接加机器名称,也可以根据提示输入机器名\033[0m" ;;
+        delete) echo -e "\033[32m命令:h_server delete [name].\t\t删除服务器,可以直接加机器名称,也可以根据提示输入机器名\033[0m" ;;
+        go) echo -e "\033[32m命令:h_server go [name] [meth] [user].\t\t跳转到服务器,有三种方式,ssh(默认),debug,sftp.\033[0m" ;;
+        scp) echo -e "\033[32m命令:h_server scp [upload|download].\t\t上传文件到服务器或者从服务器上下载文件\r\n h_server scp upload [本地文件地址] [服务器名][存放文件的远程服务器地址] [其他用户]\t\t \r\nh_server scp download [服务器名] [远程服务器文件地址] [本地存放文件地址] [其他用户]\033[0m" ;;
+        *) echo -e "\033[32m请查看详细命令,命令有add,list,edit,delete,go,scp\033[0m" ;;
 	esac
 }
 case "$1" in
@@ -217,5 +217,5 @@ case "$1" in
 	help)
 		helpMeth $2 ;; #命令帮助
 	*)
-		echo "Help :h_server [add|list|edit|delete|go|scp]" ;;
+		echo -e "\033[31mHelp :h_server [add|list|edit|delete|go|scp]\033[0m" ;;
 esac
