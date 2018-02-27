@@ -143,14 +143,14 @@ function goMeth(){
 		echo -e "\033[31m机器不存在\033[0m"
 		return 0
 	else
-		if [ "$2" = 'sftp' ]
+		if [ "$2" == 'sftp' ]
 		then
 			sshStr='sftp'
 		elif [ "$2" == 'debug' ]
 		then
             if [ "$4" != "" -a "$5" != "" ]
             then
-                sshStr='ssh -R $4:localhost:$5'
+                sshStr='ssh -R $4:localhost:$5 '
             else
 			    sshStr='ssh -R 9001:localhost:9001 '
             fi
