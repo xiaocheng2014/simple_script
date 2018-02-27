@@ -146,9 +146,14 @@ function goMeth(){
 		if [ "$2" = 'sftp' ]
 		then
 			sshStr='sftp'
-		elif [ "$2" = 'debug' ]
+		elif [ "$2" == 'debug' ]
 		then
-			sshStr='ssh -R 9001:localhost:9001 '
+            if [ "$4" != "" -a "$5" != "" ]
+            then
+                sshStr='ssh -R $4:localhost:$5'
+            else
+			    sshStr='ssh -R 9001:localhost:9001 '
+            fi
 		else
 			sshStr="ssh"
 		fi 
@@ -212,7 +217,7 @@ case "$1" in
 	delete)
 		deleteMeth $2 ;; #删除服务器
 	go)
-		goMeth $2 $3 $4 ;; #ssh跳到服务器上
+		goMeth $2 $3 $4 $5 $6 ;; #ssh跳到服务器上
 	upload)
 		scpMeth upload $2 $3 $4 $5;; #上传下载服务器
 	download)
