@@ -152,7 +152,7 @@ function goMeth(){
             then
                 sshStr='ssh -R $4:localhost:$5 '
             else
-			    sshStr='ssh -R 9001:localhost:9001 '
+			    sshStr='ssh -R 9002:localhost:9002 '
             fi
 		else
 			sshStr="ssh"
