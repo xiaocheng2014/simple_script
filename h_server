@@ -114,7 +114,7 @@ function deleteMeth(){
 	done
 
 	flag=$(awk -F : '$1 ~ /^'$name'$/ {print "1"}' $iniFile)
-	if [ $flag == "" ]
+	if [ "$flag" == "" ]
 	then
 		echo -e "\033[32m该机器不存在\033[0m"
 	else
@@ -168,10 +168,10 @@ function goMeth(){
 function scpMeth(){
 	scpStr="scp"
 	serverLink=""
-	if [[ $1 = 'download' ]]
+	if [[ "$1" = 'download' ]]
 	then
 		serverLink=$2
-	elif [[ $1 = 'upload' ]]
+	elif [[ "$1" = 'upload' ]]
 	then
 		serverLink=$3
 	fi	
@@ -186,10 +186,10 @@ function scpMeth(){
 			user="$5"
 		fi
 		serverLink=$user"@"$host
-		if [[ $1 = 'download' ]]
+		if [[ "$1" = 'download' ]]
 		then
 			eval "scp -P "$port" "$serverLink":"$3" "$4
-		elif [[ $1 = 'upload' ]]
+		elif [[ "$1" = 'upload' ]]
 		then
 			eval "scp -P "$port" "$2" "$serverLink":"$4
 		fi	
