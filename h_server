@@ -26,7 +26,7 @@ function addMeth(){
 	NAME=""
 	while [ "$NAME" == "" ]
 	do
-		echo -e "\033[32m请输入机器名称name(唯一名称):\033[0m"
+		echo -e "\033[32m请输入机器名称name(唯一名称,不要含空格):\033[0m"
 		read NAME
 	done
 
@@ -49,9 +49,12 @@ function addMeth(){
 	then
 		USER="root"
 	fi	
-	echo -e "\033[32m请输入机器描述(不要有英文冒号，这里可以注上备注):\033[0m"
+	echo -e "\033[32m请输入机器描述(不要有英文冒号或空格，这里可以注上备注):\033[0m"
 	read DESC
 	echo "$NAME:$HOST:$PORT:$USER:$DESC" >> $iniFile
+	echo -e "\033[32m请输入机器登录密码(不需要密码或者不想保存密码，直接回车):\033[0m"
+	read PASSWD
+	echo "$NAME:$HOST:$PORT:$USER:$DESC:$PASSWD" >> $iniFile
 }
 function editMeth(){
 	name="$1"
@@ -61,7 +64,7 @@ function editMeth(){
 		read name
 	done
 	
-	eval $(awk -F : '$1 ~ /^'$name'$/ {print "host="$2";port="$3";user="$4";desc="$5}' $iniFile)
+	eval $(awk -F : '$1 ~ /^'$name'$/ {print "host="$2";port="$3";user="$4";desc="$5";passwd="$6}' $iniFile)
 	if [ "$host" == "" ]
 	then
 		echo -e "\033[31m机器不存在\033[0m"
@@ -97,7 +100,15 @@ function editMeth(){
 	then
 		DESC="$desc"
 	fi
-	sed -ig "s/^"$name".*$/"$name":"$HOST":"$PORT":"$USER":"$DESC"/" $iniFile
+
+	echo -e "\033[32m请输入新的机器密码(不更改直接回车,原机器密码为"$passwd"):\033[0m"
+	read PASSWD
+	if [ "$passwd" == "" ]
+	then
+		PASSWD="$passwd"
+	fi
+		
+	sed -ig "s/^"$name".*$/"$name":"$HOST":"$PORT":"$USER":"$DESC":"$PASSWD"/" $iniFile
 	if [ "$?" == "0" ]
 	then
 		echo -e "\033[32m修改成功\033[0m"
@@ -135,8 +146,7 @@ function goMeth(){
 		awk -F : '{print $1} END{print "---------"}' $iniFile
 		read name
 	done
-
-	eval $(awk -F : '$1 ~ /^'$name'$/ {print "host="$2";port="$3";user="$4";desc="$5}' $iniFile)
+	eval $(awk -F : '$1 ~ /^'$name'$/ {print "host="$2";port="$3";user="$4";desc="$5";passwd="$6}' $iniFile)
 
 	if [ "$host" == "" ]
 	then
@@ -161,7 +171,14 @@ function goMeth(){
 		then
 		 	user="$3"
 		fi
-		eval $sshStr $user"@"$host" -p "$port
+		expect -c "
+			spawn $sshStr ${user}@${host} -p ${port};
+			expect {
+				\"yes/no\" { send \"yes\r\";exp_continue }
+				\"*assword\" { send \"$passwd\r\" }
+			}	
+			interact
+		"
 	fi
 
 }
