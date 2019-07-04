@@ -192,7 +192,7 @@ function scpMeth(){
 	then
 		serverLink=$3
 	fi	
-	eval $(awk -F : '$1 ~ /^'$serverLink'$/ {print "host="$2";port="$3";user="$4";desc="$5}' $iniFile)
+	eval $(awk -F : '$1 ~ /^'$serverLink'$/ {print "host="$2";port="$3";user="$4";desc="$5";passwd="$6}' $iniFile)
 	if [ "$host" == "" ]
 	then
 		echo -e "\033[31m机器不存在\033[0m"
@@ -205,10 +205,24 @@ function scpMeth(){
 		serverLink=$user"@"$host
 		if [[ "$1" = 'download' ]]
 		then
-			eval "scp -P "$port" "$serverLink":"$3" "$4
+			expect -c "
+				spawn scp -P ${port} ${serverLink}:$3 $4
+				expect {
+					\"*password\" { send \"$passwd\r\" }
+				}
+				interact
+
+			"
 		elif [[ "$1" = 'upload' ]]
 		then
-			eval "scp -P "$port" "$2" "$serverLink":"$4
+			expect -c "
+				spawn scp -P ${port} $2 ${serverLink}:$4
+				expect {
+					\"*password\" { send \"$passwd\r\" }
+				}
+				interact
+
+			"
 		fi	
 	fi
 }
