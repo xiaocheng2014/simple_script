@@ -103,7 +103,7 @@ function editMeth(){
 
 	echo -e "\033[32m请输入新的机器密码(不更改直接回车,原机器密码为"$passwd"):\033[0m"
 	read PASSWD
-	if [ "$passwd" == "" ]
+	if [ "$PASSWD" == "" ]
 	then
 		PASSWD="$passwd"
 	fi
