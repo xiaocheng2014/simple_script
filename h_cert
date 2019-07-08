@@ -1,0 +1,75 @@
+#!/bin/bash
+function colorInfo(){
+	colorStr=$1
+	info=$2
+	eval $(echo $1|awk -F "zi|di" '{print "zi="$1";di="$2}')
+	ziColor=""
+	diColor=""
+	case $zi in
+		"hei")
+			ziColor="30m"  ;;
+		"hong")
+			ziColor="31m"	;;
+		"lv")
+			ziColor="32m"	;;
+		"huang")
+			ziColor="33m"	;;
+		"lan")
+			ziColor="34m"	;;
+		"zi")
+			ziColor="35m"	;;
+		"tianlan")
+			ziColor="36m"	;;
+		"bai")
+			ziColor="37m"	;;
+		*)
+			ziColor=""	;;
+	esac 
+
+	case $di in
+		"hei")
+			diColor="40;"  ;;
+		"hong")
+			diColor="41;"	;;
+		"lv")
+			diColor="42;"	;;
+		"huang")
+			diColor="43;"	;;
+		"lan")
+			diColor="44;"	;;
+		"zi")
+			diColor="45;"	;;
+		"tianlan")
+			diColor="46;"	;;
+		"bai")
+			diColor="47;"	;;
+		*)
+			diColor=""	;;
+	esac 
+
+	if [[ "$ziColor" == "" ]]
+	then
+		echo $info
+		return 0
+	fi
+	
+	str="\033["${diColor}""${ziColor}" "${info}" \033[0m"
+	echo -e ${str}
+}
+
+
+function helpMeth(){
+	if [[ "$1" == "" ]]
+	then
+		colorInfo lvzi "h_cert private (rsa|sm2) name len"
+	fi
+}
+case $1 in
+	"private")
+		privateMeth $2 $3 $4	;;
+	"help")
+		helpMeth $2		;;
+	*)
+		helpMeth		;;
+
+esac
