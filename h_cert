@@ -59,14 +59,294 @@ function colorInfo(){
 
 
 function helpMeth(){
-	if [[ "$1" == "" ]]
+	case $1 in
+		"private")
+			colorInfo lvzi "help:"
+			colorInfo lvzi "\th_cert private create (rsa|sm2) name [len]" 
+			colorInfo lvzi "\th_cert private delpwd (rsa|sm2) name" 
+			;;
+		"cert")
+			colorInfo lvzi "help:"
+			colorInfo lvzi "\th_cert cert create [rsa|sm2] name"
+			;;
+		*)
+			helpMeth private
+			;;
+	esac
+}
+
+function privateMeth(){
+	case $1 in
+		"create")
+			privateCreateMeth $2 $3 $4
+			;;
+		"delpwd")
+			privateDelPwd $2 $3
+			;;
+		*)
+			helpMeth private
+			;;
+	esac
+}
+
+function privateDelPwd(){
+	type=$1
+	name=$2
+	if [[ "$type" == "rsa" ]]
 	then
-		colorInfo lvzi "h_cert private (rsa|sm2) name len"
+		koalopenssl rsa -in ${name} -out ${name}
+	elif [[ "$type" == "sm2" ]]
+	then
+		koalopenssl ec -in ${name} -out ${name}
+	else
+		helpMeth private
 	fi
 }
+
+function privateCreateMeth(){
+	type=$1
+	privateName=$2
+	len=$3
+	# 默认长度为1024
+	if [[ "$len" == "" ]]
+	then
+		len=1024
+	fi
+	# 设置默认名称为private.key
+	if [[ "$privateName" == "" ]]
+	then
+		privateName="private.key"
+	fi
+	
+	# 是否带密码
+	colorInfo lvzi "给私钥添加密码,直接回车则不需要密码"
+	if [[ "$type" == "rsa" ]]
+	then
+		read PASSWORD
+		if [[ "${PASSWORD}" == "" ]]
+		then
+			koalopenssl genrsa -out ${privateName} ${len}
+		else
+			koalopenssl genrsa -out ${privateName} -des3 -passout pass:${PASSWORD} ${len}
+		fi
+	elif [[ "$type" == "sm2" ]]
+	then
+		read PASSWORD
+		if [[ "${PASSWORD}" == "" ]]	
+		then
+			koalopenssl ecparam -name CN-GM-ECC -genkey -out ${privateName} -noout
+		else
+			koalopenssl ecparam -name CN-GM-ECC -genkey -out ${privateName} -noout		
+			koalopenssl ec -in ${privateName} -out ${privateName} -des -passout pass:${PASSWORD}
+		fi
+	else
+		helpMeth private
+	fi
+			
+}
+
+function certMeth(){
+	case $1 in
+		"create")
+			certCreateMeth $2 $3
+			;;
+		*)
+			helpMeth cert
+			;;
+	esac
+}
+
+function certCreateMeth(){
+	type=$1
+	name=$2
+	if [[ ("${type}" != "rsa" && "${type}" != "sm2") || "${name}" == "" ]]
+	then
+		helpMeth cert
+		exit -1
+	fi
+	colorInfo lvzi "请输入CN(通用名称,你的姓名或者唯一标识)项"
+	CN_STR=$(buildReq)
+	colorInfo lvzi "请输入C(国家简称,eg:CN)项"
+	C_STR=$(buildReq)
+	colorInfo lvzi "请输入ST(省市名,eg:SH)项"
+	ST_STR=$(buildReq)
+	colorInfo lvzi "请输入L(城市,eg:上海)项"
+	L_STR=$(buildReq)
+	colorInfo lvzi "请输入O(组织)项"
+	O_STR=$(buildReq)
+	colorInfo lvzi "请输入OU(部门)项"
+	OU_STR=$(buildReq)
+	colorInfo lvzi "请输入emailAddress(邮箱)项"
+	EM_STR=$(buildReq)
+
+	req="[ req ]\n"$(keyValueEcho distinguished_name req_distinguished_name)"\n"$(keyValueEcho prompt no)
+	v3Req=""
+	colorInfo lvzi "是否需要添加X509v3扩展项(y/N)"
+	read ADD_V
+	while [[ "${ADD_V^^}" != "Y" && "${ADD_V^^}" != "N" && "${ADD_V}" != "" ]]
+	do
+		read ADD_V
+	done
+	
+	if [[ "${ADD_V^^}" == "Y" ]]
+	then
+		req=${req}"\n"$(keyValueEcho req_extensions v3_req)
+		colorInfo lvzi "该证书是否为CA(y/N)"
+		read CA_FLAG
+		while [[ "${CA_FLAG^^}" != "Y" && "${CA_FLAG^^}" != "N" && "${CA_FLAG}" != "" ]]
+		do
+			read CA_FLAG
+		done
+		v3Req="\n[ v3_req ]"
+		if [[ "${CA_FLAG}" == "Y" ]]
+		then
+			v3Req=${v3Req}"\n"$(keyValueEcho basicConstraints CA:TRUE)
+		else
+			v3Req=${v3Req}"\n"$(keyValueEcho basicConstraints CA:FALSE)
+		fi
+		colorInfo lvzi "请选择证书用途,输入序列号,逗号隔开(1.数字签名 2.不可否认性 3.key加密 4.数据加密)"
+		read KEY_USAGE_STR
+		KEY_USAGE_STR=$(echo ${KEY_USAGE_STR}|sed 's/ //g')
+		if [[ "${KEY_USAGE_STR}" != "" ]]
+		then
+			KEY_USAGE_VALUE=""
+			OLD_IFS="${IFS}"	
+			IFS=","	
+			arr=(${KEY_USAGE_STR})
+			IFS=${OLD_IFS}
+			for s in ${arr[@]}
+			do
+				case $s in
+					"1")
+						KEY_USAGE_VALUE=${KEY_USAGE_VALUE}" digitalSignature,"
+						;;
+					"2")
+						KEY_USAGE_VALUE=${KEY_USAGE_VALUE}" nonRepudiation,"
+						;;
+					"3")
+						KEY_USAGE_VALUE=${KEY_USAGE_VALUE}" keyEncipherment,"
+						;;
+					"4")
+						KEY_USAGE_VALUE=${KEY_USAGE_VALUE}" dataEncipherment,"
+						;;
+					*)
+						
+						;;
+				esac
+			done
+			KEY_USAGE_VALUE=${KEY_USAGE_VALUE%,*}
+			v3Req=${v3Req}"\n"$(keyValueEcho keyUsage "${KEY_USAGE_VALUE}")
+		fi
+		colorInfo lvzi "是否添加扩展证书添加则以逗号隔开,否则直接回车跳过"
+		read EXTENDED_KEY_USAGE_STR
+		EXTENDED_KEY_USAGE_STR=$(echo ${EXTENDED_KEY_USAGE_STR}|sed 's/ //g')
+		if [[ ${EXTENDED_KEY_USAGE_STR} != "" ]]
+		then
+			v3Req=${v3Req}"\n"$(keyValueEcho extendedKeyUsage ${EXTENDED_KEY_USAGE_STR})
+		fi
+		
+	fi
+	req=${req}"\n\n[ req_distinguished_name ]\n"$(keyValueEcho CN ${CN_STR})"\n"$(keyValueEcho C ${C_STR})"\n"$(keyValueEcho ST ${ST_STR})"\n"$(keyValueEcho L ${L_STR})"\n"$(keyValueEcho O ${O_STR})"\n"$(keyValueEcho OU ${OU_STR})"\n"$(keyValueEcho emailAddress ${EM_STR})
+	req=${req}"\n"${v3Req}
+	reqFileNamePre=$(koalopenssl rand -base64 16|sed 's/\///g')
+	reqConfFileName="/tmp/"${reqFileNamePre}".cnf"
+	reqFileName="/tmp/"${reqFileNamePre}".req"
+	echo -e ${req} > ${reqConfFileName}
+	colorInfo lvzi "填写私钥路径,若没有直接回车"
+	read PRIVATE_PATH
+	if [[ "${PRIVATE_PATH}" == "" ]]
+	then
+		colorInfo lvzi "------正在创建私钥------"
+		privateCreateMeth $type	${name}".key"
+		PRIVATE_PATH=${name}".key"
+		colorInfo lvzi "------创建私钥成功,文件名为${name}.key------"
+	else 
+		ls ${PRIVATE_PATH}
+		successAccess="$?"
+		while [[ "${successAccess}" != "0" ]]
+		do
+			colorInfo hongzi "私钥不存在,请重新输入私钥路径"
+			read PRIVATE_PATH
+			if [[ "${PRIVATE_PATH}" == "" ]]
+			then
+				colorInfo lvzi "------正在创建私钥------"
+				privateCreateMeth $type	${name}".key"
+				PRIVATE_PATH=${name}".key"
+				colorInfo lvzi "------创建私钥成功,文件名为${name}.key------"
+				sucessAccess="0"
+		
+			else 
+				echo ${PRIVATE_PATH}
+				ls ${PRIVATE_PATH}
+				successAccess="$?"
+			fi
+				
+			
+		done
+	fi
+	
+	colorInfo lvzi "请输入私钥密码,若没有则直接回车"
+	read PRIVATE_PASSWD
+	if [[ "${PRIVATE_PASSWD}" == "" ]]
+	then
+		koalopenssl req -key ${PRIVATE_PATH} -new -config ${reqConfFileName} -out ${reqFileName}
+	else
+		koalopenssl req -key ${PRIVATE_PATH} -passin pass:${PRIVATE_PASSWD} -new -config ${reqConfFileName} -out ${reqFileName}
+	fi
+
+	rm -f ${reqConfFileName}
+
+	colorInfo lvzi "是否自签发(Y/n)"
+	read SELF_CA
+	while [[ "${SELF_CA^^}" != "Y" && "${SELF_CA^^}" != "N" && "${SELF_CA}" != "" ]]
+	do
+		read SELF_CA
+	done
+	if [[ "${SELF_CA^^}" == "N" ]]
+	then
+		colorInfo lvzi "请输入CA证书路径"
+		# TODO: CA证书签发
+	else
+		if [[ "${PRIVATE_PASSWD}" == "" ]]
+		then
+			koalopenssl x509 -req -extfile /etc/pki/tls/openssl.cnf -extensions v3_req -in ${reqFileName} -signkey ${PRIVATE_PATH} -out ${name}".pem"
+		else
+			koalopenssl x509 -req -extfile /etc/pki/tls/openssl.cnf -extensions v3_req -in ${reqFileName} -signkey ${PRIVATE_PATH} -out ${name}".pem" -passin pass:${PRIVATE_PASSWD}
+		fi
+	fi
+	rm -f ${reqFileName}
+		
+	if [[ "$type" == "rsa" ]]	
+	then
+		echo "rsa"
+	elif [[ "$type" == "sm2" ]]
+	then
+		echo "sm2"
+	else
+		helpMeth cert
+	fi
+}
+
+function buildReq(){
+	read ITEM_STR
+	while [[ "${ITEM_STR}" == ""  ]]
+	do
+		read ITEM_STR
+	done
+	echo ${ITEM_STR}
+}
+
+function keyValueEcho(){
+	key=$1
+	value=$2
+	echo "${key}\r\t\t\t\t\t\t=\t${value}"
+}
+
 case $1 in
 	"private")
-		privateMeth $2 $3 $4	;;
+		privateMeth $2 $3 $4 $5	;;
+	"cert")
+		certMeth $2 $3 $4 	;;
 	"help")
 		helpMeth $2		;;
 	*)
