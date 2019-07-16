@@ -294,7 +294,6 @@ function certCreateMeth(){
 		koalopenssl req -key ${PRIVATE_PATH} -passin pass:${PRIVATE_PASSWD} -new -config ${reqConfFileName} -out ${reqFileName}
 	fi
 
-	rm -f ${reqConfFileName}
 
 	colorInfo lvzi "是否自签发(Y/n)"
 	read SELF_CA
@@ -309,11 +308,12 @@ function certCreateMeth(){
 	else
 		if [[ "${PRIVATE_PASSWD}" == "" ]]
 		then
-			koalopenssl x509 -req -extfile /etc/pki/tls/openssl.cnf -extensions v3_req -in ${reqFileName} -signkey ${PRIVATE_PATH} -out ${name}".pem"
+			koalopenssl x509 -req -extfile ${reqConfFileName}  -extensions v3_req -in ${reqFileName} -signkey ${PRIVATE_PATH} -out ${name}".pem"
 		else
-			koalopenssl x509 -req -extfile /etc/pki/tls/openssl.cnf -extensions v3_req -in ${reqFileName} -signkey ${PRIVATE_PATH} -out ${name}".pem" -passin pass:${PRIVATE_PASSWD}
+			koalopenssl x509 -req -extfile ${reqConfFileName} -extensions v3_req -in ${reqFileName} -signkey ${PRIVATE_PATH} -out ${name}".pem" -passin pass:${PRIVATE_PASSWD}
 		fi
 	fi
+	rm -f ${reqConfFileName}
 	rm -f ${reqFileName}
 		
 	if [[ "$type" == "rsa" ]]	
