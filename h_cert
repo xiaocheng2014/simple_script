@@ -204,7 +204,7 @@ function certCreateMeth(){
 		else
 			v3Req=${v3Req}"\n"$(keyValueEcho basicConstraints CA:FALSE)
 		fi
-		colorInfo lvzi "请选择证书用途,输入序列号,逗号隔开(1.数字签名 2.不可否认性 3.key加密 4.数据加密)"
+		colorInfo lvzi "请选择证书用途,输入序列号,逗号隔开(1.数字签名 2.不可否认性 3.key加密 4.数据加密),不添加直接回车跳过"
 		read KEY_USAGE_STR
 		KEY_USAGE_STR=$(echo ${KEY_USAGE_STR}|sed 's/ //g')
 		if [[ "${KEY_USAGE_STR}" != "" ]]
@@ -237,12 +237,41 @@ function certCreateMeth(){
 			KEY_USAGE_VALUE=${KEY_USAGE_VALUE%,*}
 			v3Req=${v3Req}"\n"$(keyValueEcho keyUsage "${KEY_USAGE_VALUE}")
 		fi
-		colorInfo lvzi "是否添加扩展证书添加则以逗号隔开,否则直接回车跳过"
+		colorInfo lvzi "请添加扩展证书添加则以逗号隔开(1.服务器身份验证2.客户端身份验证3.代码签名4.安全电子邮件5.时间戳),不添加直接回车跳过"
 		read EXTENDED_KEY_USAGE_STR
 		EXTENDED_KEY_USAGE_STR=$(echo ${EXTENDED_KEY_USAGE_STR}|sed 's/ //g')
 		if [[ ${EXTENDED_KEY_USAGE_STR} != "" ]]
 		then
-			v3Req=${v3Req}"\n"$(keyValueEcho extendedKeyUsage ${EXTENDED_KEY_USAGE_STR})
+			EXTENDED_KEY_USAGE_VALUE=""
+			OLD_IFS="${IFS}"	
+			IFS=","	
+			arr=(${EXTENDED_KEY_USAGE_STR})
+			IFS=${OLD_IFS}
+			for s in ${arr[@]}
+			do
+				case $s in
+					"1")
+						EXTENDED_KEY_USAGE_VALUE=${EXTENDED_KEY_USAGE_VALUE}"serverAuth,"
+						;;
+					"2")
+						EXTENDED_KEY_USAGE_VALUE=${EXTENDED_KEY_USAGE_VALUE}"clientAuth,"
+						;;
+					"3")
+						EXTENDED_KEY_USAGE_VALUE=${EXTENDED_KEY_USAGE_VALUE}"codeSigning,"
+						;;
+					"4")
+						EXTENDED_KEY_USAGE_VALUE=${EXTENDED_KEY_USAGE_VALUE}"emailProtection,"
+						;;
+					"5")
+						EXTENDED_KEY_USAGE_VALUE=${EXTENDED_KEY_USAGE_VALUE}"timeStamping,"
+						;;
+					*)
+						;;
+				esac
+						
+			done
+			EXTENDED_KEY_USAGE_VALUE=${EXTENDED_KEY_USAGE_VALUE%,*}
+			v3Req=${v3Req}"\n"$(keyValueEcho extendedKeyUsage ${EXTENDED_KEY_USAGE_VALUE})
 		fi
 		
 	fi
