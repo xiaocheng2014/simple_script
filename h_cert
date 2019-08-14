@@ -71,6 +71,7 @@ function helpMeth(){
 			;;
 		*)
 			helpMeth private
+			helpMeth cert
 			;;
 	esac
 }
