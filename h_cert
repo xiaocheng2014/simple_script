@@ -68,6 +68,7 @@ function helpMeth(){
 		"cert")
 			colorInfo lvzi "help:"
 			colorInfo lvzi "\th_cert cert create [rsa|sm2] name"
+			colorInfo lvzi "\th_cert cert p12 name password"
 			;;
 		*)
 			helpMeth private
@@ -146,10 +147,46 @@ function privateCreateMeth(){
 			
 }
 
+
+function p12Meth(){
+	name=$1
+	password=$2
+	if [[ "${name}" == "" ]]
+	then
+		colorInfo hongzi "请带上name"	
+		exit -1
+	fi
+	keyFileName="${name}.key"	
+	pemFileName="${name}.pem"
+	p12FileName="${name}.pfx"
+	echo ${name}
+	if [[ ! -f "${keyFileName}" ]]
+	then
+		colorInfo hongzi "私钥不存在"
+		exit -1
+	fi
+	if [[ ! -f "${pemFileName}" ]]
+	then
+		colorInfo hongzi "证书不存在"
+		exit -1
+	fi
+	
+	if [[ "${password}" == "" ]]
+	then
+		koalopenssl pkcs12 -export -inkey ${keyFileName} -in ${pemFileName} -nodes -out ${p12FileName} 
+	else
+		koalopenssl pkcs12 -export -inkey ${keyFileName} -in ${pemFileName} -passin pass:${password} -out ${p12FileName} 
+	fi
+	
+}
+
 function certMeth(){
 	case $1 in
 		"create")
 			certCreateMeth $2 $3
+			;;
+		"p12")
+			p12Meth $2 $3
 			;;
 		*)
 			helpMeth cert
@@ -355,16 +392,20 @@ function certCreateMeth(){
 		if [[ "${CA_PASSWORD}" == "" ]]	
 		then 
 			koalopenssl x509 -req -extfile ${reqConfFileName} ${v3ReqStr} -in ${reqFileName} -CA ${CA_PEM_PATH} -CAkey ${CA_KEY_PATH} -out ${name}".pem" -CAcreateserial
+			p12Meth ${name} ${PRIVATE_PASSWD}
 		else
 			koalopenssl x509 -req -extfile ${reqConfFileName} ${v3ReqStr} -in ${reqFileName} -CA ${CA_PEM_PATH} -CAkey ${CA_KEY_PATH} -out ${name}".pem" -passin pass:${CA_PASSWORD} -CAcreateserial
+			p12Meth ${name} ${PRIVATE_PASSWD}
 		fi
 	
 	else
 		if [[ "${PRIVATE_PASSWD}" == "" ]]
 		then
 			koalopenssl x509 -req -extfile ${reqConfFileName} ${v3ReqStr} -in ${reqFileName} -signkey ${PRIVATE_PATH} -out ${name}".pem"
+			p12Meth ${name} ${PRIVATE_PASSWD}
 		else
 			koalopenssl x509 -req -extfile ${reqConfFileName} ${v3ReqStr} -in ${reqFileName} -signkey ${PRIVATE_PATH} -out ${name}".pem" -passin pass:${PRIVATE_PASSWD}
+			p12Meth ${name} ${PRIVATE_PASSWD}
 		fi
 	fi
 	rm -f ${reqConfFileName}
