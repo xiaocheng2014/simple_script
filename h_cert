@@ -331,16 +331,40 @@ function certCreateMeth(){
 	do
 		read SELF_CA
 	done
+	v3ReqStr=""
+	if [[ "${ADD_V^^}" == "Y" ]]
+	then
+		v3ReqStr=" -extensions v3_req "
+	fi
 	if [[ "${SELF_CA^^}" == "N" ]]
 	then
 		colorInfo lvzi "请输入CA证书路径"
-		# TODO: CA证书签发
+		read CA_PEM_PATH
+		while [[ "${CA_PEM_PATH}" == "" ]]
+		do
+			read CA_PEM_PATH
+		done
+		colorInfo lvzi "请输入CA私钥路径"
+		read CA_KEY_PATH
+		while [[ "${CA_KEY_PATH}" == "" ]]
+		do
+			read CA_KEY_PATH
+		done
+		colorInfo lvzi "请输入CA私钥密码"
+		read CA_PASSWORD
+		if [[ "${CA_PASSWORD}" == "" ]]	
+		then 
+			koalopenssl x509 -req -extfile ${reqConfFileName} ${v3ReqStr} -in ${reqFileName} -CA ${CA_PEM_PATH} -CAkey ${CA_KEY_PATH} -out ${name}".pem" -CAcreateserial
+		else
+			koalopenssl x509 -req -extfile ${reqConfFileName} ${v3ReqStr} -in ${reqFileName} -CA ${CA_PEM_PATH} -CAkey ${CA_KEY_PATH} -out ${name}".pem" -passin pass:${CA_PASSWORD} -CAcreateserial
+		fi
+	
 	else
 		if [[ "${PRIVATE_PASSWD}" == "" ]]
 		then
-			koalopenssl x509 -req -extfile ${reqConfFileName}  -extensions v3_req -in ${reqFileName} -signkey ${PRIVATE_PATH} -out ${name}".pem"
+			koalopenssl x509 -req -extfile ${reqConfFileName} ${v3ReqStr} -in ${reqFileName} -signkey ${PRIVATE_PATH} -out ${name}".pem"
 		else
-			koalopenssl x509 -req -extfile ${reqConfFileName} -extensions v3_req -in ${reqFileName} -signkey ${PRIVATE_PATH} -out ${name}".pem" -passin pass:${PRIVATE_PASSWD}
+			koalopenssl x509 -req -extfile ${reqConfFileName} ${v3ReqStr} -in ${reqFileName} -signkey ${PRIVATE_PATH} -out ${name}".pem" -passin pass:${PRIVATE_PASSWD}
 		fi
 	fi
 	rm -f ${reqConfFileName}
