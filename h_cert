@@ -356,9 +356,9 @@ function certCreateMeth(){
 	read PRIVATE_PASSWD
 	if [[ "${PRIVATE_PASSWD}" == "" ]]
 	then
-		koalopenssl req -key ${PRIVATE_PATH} -new -config ${reqConfFileName} -out ${reqFileName}
+		koalopenssl req -key ${PRIVATE_PATH} -new -config ${reqConfFileName} -out ${reqFileName} -utf8
 	else
-		koalopenssl req -key ${PRIVATE_PATH} -passin pass:${PRIVATE_PASSWD} -new -config ${reqConfFileName} -out ${reqFileName}
+		koalopenssl req -key ${PRIVATE_PATH} -passin pass:${PRIVATE_PASSWD} -new -config ${reqConfFileName} -out ${reqFileName} -utf8
 	fi
 
 
