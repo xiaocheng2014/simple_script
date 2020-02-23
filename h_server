@@ -51,7 +51,6 @@ function addMeth(){
 	fi	
 	echo -e "\033[32m请输入机器描述(不要有英文冒号或空格，这里可以注上备注):\033[0m"
 	read DESC
-	echo "$NAME:$HOST:$PORT:$USER:$DESC" >> $iniFile
 	echo -e "\033[32m请输入机器登录密码(不需要密码或者不想保存密码，直接回车):\033[0m"
 	read PASSWD
 	echo "$NAME:$HOST:$PORT:$USER:$DESC:$PASSWD" >> $iniFile
