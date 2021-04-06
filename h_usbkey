@@ -1,0 +1,259 @@
+#!/bin/bash
+
+SK_TOOL_BIN_PATH=/usr/local/src/sk-tool/bin
+SK_TOOL_PATH=${SK_TOOL_BIN_PATH}/sk_tool
+GM_SO_PATH=${SK_TOOL_BIN_PATH}/libgm3000.1.0.so
+KOAL_OPENSSL_PATH=/usr/local/bin/koalopenssl
+
+devName=""
+appName=""
+containers=()
+
+function colorInfo(){
+	colorStr=$1
+	info=$2
+	eval $(echo $1|awk -F "zi|di" '{print "zi="$1";di="$2}')
+	ziColor=""
+	diColor=""
+	case $zi in
+		"hei")
+			ziColor="30m"  ;;
+		"hong")
+			ziColor="31m"	;;
+		"lv")
+			ziColor="32m"	;;
+		"huang")
+			ziColor="33m"	;;
+		"lan")
+			ziColor="34m"	;;
+		"zi")
+			ziColor="35m"	;;
+		"tianlan")
+			ziColor="36m"	;;
+		"bai")
+			ziColor="37m"	;;
+		*)
+			ziColor=""	;;
+	esac 
+
+	case $di in
+		"hei")
+			diColor="40;"  ;;
+		"hong")
+			diColor="41;"	;;
+		"lv")
+			diColor="42;"	;;
+		"huang")
+			diColor="43;"	;;
+		"lan")
+			diColor="44;"	;;
+		"zi")
+			diColor="45;"	;;
+		"tianlan")
+			diColor="46;"	;;
+		"bai")
+			diColor="47;"	;;
+		*)
+			diColor=""	;;
+	esac 
+
+	if [[ "$ziColor" == "" ]]
+	then
+		echo $info
+		return 0
+	fi
+	
+	str="\033["${diColor}""${ziColor}" "${info}" \033[0m"
+	echo -e ${str}
+}
+
+function helpMeth(){
+	colorInfo lvzi "help:"
+	colorInfo lvzi "\th_usbkey cert: 打印usb key信息"
+	colorInfo lvzi "\th_usbkey cert add: 添加证书"
+	colorInfo lvzi "\th_usbkey cert del: 删除证书"
+}
+function certListMeth(){
+	${SK_TOOL_PATH}	 --dump --sopath ${GM_SO_PATH} 2>/dev/null
+}
+function certAddMeth() {
+	colorInfo lvzi "请输入新增的容器名称:"
+	read NEW_CONTAINER_NAME
+	canNotBeNameFlag="true"
+	while [[ "${canNotBeNameFlag}" == "true" ]]
+	do
+		if [[ "${NEW_CONTAINER_NAME}" == "" ]]
+		then
+			colorInfo hongzi "容器名称不能为空,请重新输入:"
+			read NEW_CONTAINER_NAME
+		elif [[ "${NEW_CONTAINER_NAME}" == "q" ]]
+		then
+			exit 0
+		else
+			breakContainers="false"
+			for j in ${containers[*]}
+			do
+				if [[ "${j}" == ${NEW_CONTAINER_NAME} ]]
+				then
+					colorInfo hongzi "该容器名称已经存在,请使用其他名称:(或者输入q退出,进行删除容器)"
+					read NEW_CONTAINER_NAME
+					breakContainers="true"
+					break;
+				fi
+			done
+			if [[ "${breakContainers}" == "false" ]]
+			then
+				canNotBeNameFlag="false"
+			fi
+		fi
+	done
+	# PIN码获取
+	colorInfo lvzi "请输入key的PIN码:"	
+	read PIN
+	while [[ "$PIN" == "" ]]
+	do
+		colorInfo hongzi "PIN码不能为空,请重新输入"
+		read PIN
+	done
+	# 新建容器
+	$(${SK_TOOL_PATH} --container_add ${devName}/${appName}/${NEW_CONTAINER_NAME} --pin ${PIN} --sopath ${GM_SO_PATH})
+	colorInfo lvzi "请选择类型: 1.rsa 2.sm2 (默认rsa)"		
+	read CERT_TYPE
+	while [[ "${CERT_TYPE}" != "1" && "${CERT_TYPE}" != "2" && "${CERT_TYPE}" != "rsa" && "${CERT_TYPE}" != "sm2" && "${CERT_TYPE}" != "" ]]
+	do
+		colorInfo hongzi "输入有误,请重新输入"
+		read CERT_TYPE
+	done
+	isRsa="false"
+	if [[ "${CERT_TYPE}" == "1" || "${CERT_TYPE}" == "rsa" || "${CERT_TYPE}" == "" ]]
+	then
+		isRsa="true"	
+	fi
+	# 生成私钥
+	if [[ "${isRsa}" == "true" ]]	
+	then
+		$(${SK_TOOL_PATH} --genkeypair rsa2048 --skfpath ${devName}/${appName}/${NEW_CONTAINER_NAME} --pin ${PIN} --sopath ${GM_SO_PATH})
+	else
+		$(${SK_TOOL_PATH} --genkeypair sm2 --skfpath ${devName}/${appName}/${NEW_CONTAINER_NAME} --pin ${PIN} --sopath ${GM_SO_PATH})
+	fi
+	# 生成证书请求
+	colorInfo lvzi "请输入C(国家简称,eg:CN)项"
+	C_STR=$(buildReq)
+        colorInfo lvzi "请输入CN(通用名称,你的姓名或者唯一标识)项"
+	CN_STR=$(buildReq)
+	colorInfo lvzi "请输入ST(省市名,eg:SH)项"
+	ST_STR=$(buildReq)
+	colorInfo lvzi "请输入L(城市,eg:上海)项"
+	L_STR=$(buildReq)
+	colorInfo lvzi "请输入O(组织)项"	
+	O_STR=$(buildReq)
+	colorInfo lvzi "请输入OU(部门)项"
+	OU_STR=$(buildReq)
+	colorInfo lvzi "请输入emailAddress(邮箱)项"
+	EM_STR=$(buildReq)
+	$(${SK_TOOL_PATH} --genreq /C=${C_TR}/CN=${CN_STR}/ST=${ST_STR}/L=${L_STR}/O=${O_STR}/OU=${OU_STR}/emailAddress=${EM_STR} --skfpath ${devName}/${appName}/${NEW_CONTAINER_NAME} --pin ${PIN} --sopath ${GM_SO_PATH} --out /tmp/${NEW_CONTAINER_NAME}.req)
+	# 获取CA证书信息
+	colorInfo lvzi "请输入CA证书路径"	
+	read CA_PEM_PATH
+	while [[ "${CA_PEM_PATH}" == "" ]]
+	do
+		colorInfo hongzi "路径不能为空"	
+		read CA_PEM_PATH
+	done
+	colorInfo lvzi "请输入CA私钥路径"
+	read CA_KEY_PATH
+	while [[ "$CA_KEY_PATH" == "" ]]
+	do
+		colorInfo hongzi "路径不能为空"
+		read CA_KEY_PATH
+	done
+	$(${KOAL_OPENSSL_PATH} x509 -req -in /tmp/${NEW_CONTAINER_NAME}.req -CA ${CA_PEM_PATH} -CAkey ${CA_KEY_PATH} -out /tmp/${NEW_CONTAINER_NAME}.pem -days 3650 -CAcreateserial)
+	# 写入证书
+	$(${SK_TOOL_PATH} --import_cert /tmp/${NEW_CONTAINER_NAME}.pem --type sig --skfpath ${devName}/${appName}/${NEW_CONTAINER_NAME} --pin ${PIN} --sopath ${GM_SO_PATH} --out /tmp/${NEW_CONTAINER_NAME}.req)
+	
+}
+function buildReq() {
+	read ITEM_STR
+	while [[ "${ITEM_STR}" == "" ]]
+	do
+		colorInfo hongzi "输入为空,请重新输入"
+		read ITEM_STR
+	done
+	echo ${ITEM_STR}
+}
+function certDelMeth() {
+	# PIN码获取
+	colorInfo lvzi "请输入key的PIN码:"	
+	read PIN
+	while [[ "$PIN" == "" ]]
+	do
+		colorInfo hongzi "PIN码不能为空,请重新输入"
+		read PIN
+	done
+	colorInfo lvzi "请输入需要删除的容器名称:"
+	read DEL_CONTAINER_NAME
+	canNotBeNameFlag="true"
+	while [[ "${canNotBeNameFlag}" == "true" ]]
+	do
+		if [[ "${DEL_CONTAINER_NAME}" == "" ]]
+		then
+			colorInfo hongzi "容器名称不能为空,请重新输入:"
+			read DEL_CONTAINER_NAME
+		elif [[ "${DEL_CONTAINER_NAME}" == "q" ]]
+		then
+			exit 0
+		else
+			for j in ${containers[*]}
+			do
+				if [[ "${j}" == ${DEL_CONTAINER_NAME} ]]
+				then
+					# 进行删除
+					$(${SK_TOOL_PATH} --container_del ${devName}/${appName}/${DEL_CONTAINER_NAME} --pin ${PIN} --sopath ${GM_SO_PATH})
+					canNotBeNameFlag=false					
+					exit 0
+				fi
+			done
+			if [[ "${canNotBeNameFlag}" == "true"  ]]	
+			then
+				colorInfo hongzi "该容器不存在,请输入存在的容器名称"				
+				read DEL_CONTAINER_NAME
+			fi
+		
+		fi
+	done
+	
+}
+function certMeth(){
+	case $1 in
+		"")
+			certListMeth	;;
+		"add")
+			certAddMeth	;;
+		"del")
+			certDelMeth	;;
+		*)
+			helpMeth	;;
+	esac
+}
+function usbkeyCheck() {
+	devNameInfo=$(certListMeth | grep DevName)
+	if [[ ${devNameInfo} == "" ]]
+	then
+		colorInfo hongzi "未检测到usb key,请先查入key"
+		exit 0
+	fi
+	devName=$(echo ${devNameInfo}|awk -F "DevName: " '{print $2}')
+	appName=$(certListMeth |grep Application|awk -F "Application: " '{print $2}')
+	eval $(certListMeth|grep ContainerName|awk -F "ContainerName: " '{print "containers["NR-1"]=\""$2"\""}')
+	colorInfo lvzi "设备名:${devName}"
+	colorInfo lvzi "应用名:${appName}"
+	colorInfo lvzi "容器列表:${containers[*]}"
+}
+usbkeyCheck
+case $1 in
+	"cert")
+		certMeth $2	;;
+	*)
+		helpMeth	;;
+esac
+	
