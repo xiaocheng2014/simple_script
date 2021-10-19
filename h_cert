@@ -216,6 +216,8 @@ function certCreateMeth(){
 	OU_STR=$(buildReq)
 	colorInfo lvzi "请输入emailAddress(邮箱)项"
 	EM_STR=$(buildReq)
+	colorInfo lvzi "请输入GN项"
+	GN_STR=$(buildReqCanNull)
 
 	req="[ req ]\n"$(keyValueEcho distinguished_name req_distinguished_name)"\n"$(keyValueEcho prompt no)
 	v3Req=""
@@ -236,9 +238,11 @@ function certCreateMeth(){
 			read CA_FLAG
 		done
 		v3Req="\n[ v3_req ]"
-		if [[ "${CA_FLAG}" == "Y" ]]
+		caKeyUsageStr=''
+		if [[ "${CA_FLAG^^}" == "Y" ]]
 		then
 			v3Req=${v3Req}"\n"$(keyValueEcho basicConstraints CA:TRUE)
+			caKeyUsageStr="cRLSign, keyCertSign,"
 		else
 			v3Req=${v3Req}"\n"$(keyValueEcho basicConstraints CA:FALSE)
 		fi
@@ -247,7 +251,7 @@ function certCreateMeth(){
 		KEY_USAGE_STR=$(echo ${KEY_USAGE_STR}|sed 's/ //g')
 		if [[ "${KEY_USAGE_STR}" != "" ]]
 		then
-			KEY_USAGE_VALUE=""
+			KEY_USAGE_VALUE="${caKeyUsageStr}"
 			OLD_IFS="${IFS}"	
 			IFS=","	
 			arr=(${KEY_USAGE_STR})
@@ -313,7 +317,7 @@ function certCreateMeth(){
 		fi
 		
 	fi
-	req=${req}"\n\n[ req_distinguished_name ]\n"$(keyValueEcho CN ${CN_STR})"\n"$(keyValueEcho C ${C_STR})"\n"$(keyValueEcho ST ${ST_STR})"\n"$(keyValueEcho L ${L_STR})"\n"$(keyValueEcho O ${O_STR})"\n"$(keyValueEcho OU ${OU_STR})"\n"$(keyValueEcho emailAddress ${EM_STR})
+	req=${req}"\n\n[ req_distinguished_name ]\n"$(keyValueEcho CN ${CN_STR})"\n"$(keyValueEcho C ${C_STR})"\n"$(keyValueEcho ST ${ST_STR})"\n"$(keyValueEcho L ${L_STR})"\n"$(keyValueEcho O ${O_STR})"\n"$(keyValueEcho OU ${OU_STR})"\n"$(keyValueEcho emailAddress ${EM_STR})"\n"$(keyValueEcho GN ${GN_STR})
 	req=${req}"\n"${v3Req}
 	reqFileNamePre=$(koalopenssl rand -base64 16|sed 's/\///g')
 	reqConfFileName="/tmp/"${reqFileNamePre}".cnf"
@@ -438,10 +442,24 @@ function buildReq(){
 	echo ${ITEM_STR}
 }
 
+function buildReqCanNull(){
+	read ITEM_STR
+	if [[ "${ITEM_STR}" == ""  ]]
+	then
+		ITEM_STR="kl_null"
+	fi
+	echo ${ITEM_STR}
+}
+
 function keyValueEcho(){
 	key=$1
 	value=$2
-	echo "${key}\r\t\t\t\t\t\t=\t${value}"
+        if [[ "$value" == "kl_null" ]]
+	then
+		echo ""
+	else
+		echo "${key}\r\t\t\t\t\t\t=\t${value}"
+	fi
 }
 
 case $1 in
