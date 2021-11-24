@@ -70,9 +70,17 @@ function helpMeth(){
 			colorInfo lvzi "\th_cert cert create [rsa|sm2] name"
 			colorInfo lvzi "\th_cert cert p12 name password"
 			;;
+		"sign")
+			colorInfo lvzi "help:"
+			colorInfo lvzi "\th_cert sign"
+			colorInfo lvzi "\th_cert sign [pem]"
+			colorInfo lvzi "\th_cert sign [pem] [key]"
+			colorInfo lvzi "\th_cert sign [pem] [key] [random]"
+			;;
 		*)
 			helpMeth private
 			helpMeth cert
+			helpMeth sign
 			;;
 	esac
 }
@@ -462,11 +470,81 @@ function keyValueEcho(){
 	fi
 }
 
+function sign(){
+	if [ "$1" == ""  ]
+	then
+		colorInfo lvzi "请输入证书路径"
+		hasExistPem=false
+		while [ !${hasExistPem} ]
+		do
+			read PEM_PATH
+			if [[ "${PEM_PATH}" == "" ]]
+			then
+				colorInfo hongzi "请输入证书路径"
+			elif [[ ! -f "${PEM_PATH}" ]]
+			then
+				colorInfo hongzi "证书不存在,请重新输入证书路径"
+			else
+				break
+			fi
+		done	
+	else
+		PEM_PATH=$1
+		if [[ ! -f "${PEM_PATH}" ]]
+		then
+			colorInfo hongzi "证书不存在,请重新输入证书路径"
+		fi
+	fi
+	if [ "$2" == "" ]
+	then
+		colorInfo lvzi "请输入私钥路径"
+		hasExistKey=false
+		while [[ !${hasExistKey} ]]
+		do
+			read KEY_PATH
+			if [[ "${KEY_PATH}" == "" ]]
+			then
+				colorInfo hongzi "请输入私钥路径"
+			elif [[ ! -f "${KEY_PATH}"  ]]
+			then
+				colorInfo hongzi "私钥不存在,请重新输入私钥路径"
+			else
+				break
+			fi
+		done	
+	else
+		KEY_PATH=$2
+	fi
+	if [ "$3" == "" ]
+	then
+		colorInfo lvzi "请输入待签名数据"
+		read SIGN_TEXT
+		while [[ "${SIGN_TEXT}" == "" ]]
+		do
+			read SIGN_TEXT
+		done
+	else
+		SIGN_TEXT=$3
+	fi
+	# 将签名数据写入文件
+        signFileNamePre=$(koalopenssl rand -base64 16|sed 's/\///g')
+        signFileName="/tmp/"${signFileNamePre}".txt"
+        echo -e ${SIGN_TEXT} > ${signFileName}
+        signResFileNamePre=$(koalopenssl rand -base64 16|sed 's/\///g')
+        signResFileName="/tmp/"${signResFileNamePre}".sig"
+	koalopenssl smime -sign -in ${signFileName} -signer ${PEM_PATH} -inkey ${KEY_PATH}  -out ${signResFileName} -nodetach -md sha1
+	sed -n '6,$p' ${signResFileName}|sed ':a;N;$!ba;s/\n//g'
+	rm -rf ${signFileName}
+	rm -rf ${signResFileName}
+}
+
 case $1 in
 	"private")
 		privateMeth $2 $3 $4 $5	;;
 	"cert")
 		certMeth $2 $3 $4 	;;
+	"sign")
+		sign $2 $3 $4		;;
 	"help")
 		helpMeth $2		;;
 	*)
