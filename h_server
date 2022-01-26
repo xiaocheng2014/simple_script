@@ -1,18 +1,25 @@
 #!/bin/bash
 iniFile="$HOME/.h_server/.ini"
+iniPasswdFile="$HOME/.h_server/.password"
 iniDir="$HOME/.h_server"
-function listMeth(){
-	if [ ! -f "$iniFile" ]	
-	then
-		echo -e  "\033[31m没有添加任何机器\033[0m"
-	else
-		showList				
-	fi
+FILE_PASSWORD=""
+TEXT_INI=""
+
+function encryptIni() {
+	# 待加密文件
+	iniContentPath=$1
+	# 加密写入的文件
+	iniEncryptIniPath=$2
+	# 密码
+	pass=$3
+	openssl enc -aes-128-cbc -e -in ${iniContentPath}  -pass pass:${pass} -out ${iniEncryptIniPath}
 }
-function showList(){
-	awk -F : '{print("--------------\r\n主机名:"$1"\r\nhost:"$2"\r\n端口号:"$3"\r\n默认用户名:"$4"\r\n描述、备注:"$5)}' $iniFile |more
+function decryptIni() {
+	iniDecryptIniPath=$1
+	pass=$2
+	echo -e "$(openssl enc -aes-128-cbc -d -in ${iniDecryptIniPath} -pass pass:${pass} 2>/dev/null)"
 }
-function addMeth(){
+function checkPasswdFile() {
 	if [ ! -d "$iniDir" ]
 	then
 		mkdir $iniDir;chmod 700 $iniDir;
@@ -22,7 +29,39 @@ function addMeth(){
 	then
 		touch $iniFile;chmod 600 $iniFile;
 	fi
-	
+
+	if [ ! -f "${iniPasswdFile}" ]
+	then
+		echo -e "\033[31m没有找到加解密密码\033[0m"
+		while [ "${FILE_PASSWORD}" == "" ]
+		do
+			echo -e "\033[32m请输入加解密密码:\033[0m"
+			read FILE_PASSWORD
+		done
+		touch ${iniPasswdFile};chmod 600 $iniPasswdFile;
+		echo "${FILE_PASSWORD}" > ${iniPasswdFile}
+	fi
+	FILE_PASSWORD="$(cat ${iniPasswdFile})"
+	TEXT_INI="$(decryptIni ${iniFile} ${FILE_PASSWORD})"
+	TEXT_INI=$(echo -e "${TEXT_INI}"|sed '/^$/d')
+}
+function listMeth(){
+	if [ ! -f "$iniFile" ]
+	then
+		echo -e  "\033[31m没有添加任何机器\033[0m"
+	else
+		if [ "${TEXT_INI}" == ""  ]
+		then
+			echo -e  "\033[31m没有添加任何机器\033[0m"
+		else
+			showList
+		fi
+	fi
+}
+function showList(){
+	echo -e "${TEXT_INI}"|awk -F : '{print("--------------\r\n主机名:"$1"\r\nhost:"$2"\r\n端口号:"$3"\r\n默认用户名:"$4"\r\n描述、备注:"$5)}'
+}
+function addMeth(){
 	NAME=""
 	while [ "$NAME" == "" ]
 	do
@@ -48,12 +87,17 @@ function addMeth(){
 	if [ "$USER" == "" ]
 	then
 		USER="root"
-	fi	
+	fi
 	echo -e "\033[32m请输入机器描述(不要有英文冒号或空格，这里可以注上备注):\033[0m"
 	read DESC
 	echo -e "\033[32m请输入机器登录密码(不需要密码或者不想保存密码，直接回车):\033[0m"
 	read PASSWD
-	echo "$NAME:$HOST:$PORT:$USER:$DESC:$PASSWD" >> $iniFile
+	# 创建临时存储明文的文件
+	tmpIniPath="/tmp/.h_ini.bak"
+	echo -e "${TEXT_INI}" > ${tmpIniPath}
+	echo "$NAME:$HOST:$PORT:$USER:$DESC:$PASSWD" >> ${tmpIniPath}
+	encryptIni ${tmpIniPath} ${iniFile} ${FILE_PASSWORD}
+	rm -rf ${tmpIniPath}
 }
 function editMeth(){
 	name="$1"
@@ -62,8 +106,8 @@ function editMeth(){
 		echo -e "\033[32m请输入要修改的机器名称name:\033[0m"
 		read name
 	done
-	
-	eval $(awk -F : '$1 ~ /^'$name'$/ {print "host="$2";port="$3";user="$4";desc="$5";passwd="$6}' $iniFile)
+
+	eval $(echo -e "${TEXT_INI}"|awk -F : '$1 ~ /^'$name'$/ {print "host="$2";port="$3";user="$4";desc="$5";passwd="$6}')
 	if [ "$host" == "" ]
 	then
 		echo -e "\033[31m机器不存在\033[0m"
@@ -106,14 +150,17 @@ function editMeth(){
 	then
 		PASSWD="$passwd"
 	fi
-		
-	sed -ig "s/^"$name".*$/"$name":"$HOST":"$PORT":"$USER":"$DESC":"$PASSWD"/" $iniFile
+	# 创建临时存储明文的文件
+	tmpIniPath="/tmp/.h_ini.bak"
+	echo -e "${TEXT_INI}"|sed "s/^"${name}":.*$/"$name":"$HOST":"$PORT":"$USER":"$DESC":"$PASSWD"/" > ${tmpIniPath}
+	encryptIni ${tmpIniPath} ${iniFile} ${FILE_PASSWORD}
 	if [ "$?" == "0" ]
 	then
 		echo -e "\033[32m修改成功\033[0m"
 	else
 		echo -e "\033[31m修改失败\033[0m"
 	fi
+	rm -rf ${tmpIniPath}
 }
 function deleteMeth(){
 	name="$1"
@@ -123,18 +170,22 @@ function deleteMeth(){
 		read name
 	done
 
-	flag=$(awk -F : '$1 ~ /^'$name'$/ {print "1"}' $iniFile)
+	flag=$(echo -e "${TEXT_INI}"|awk -F : '$1 ~ /^'$name'$/ {print "1"}')
 	if [ "$flag" == "" ]
 	then
 		echo -e "\033[32m该机器不存在\033[0m"
 	else
-		sed -ig '/^'$name":/d" $iniFile
+		# 创建临时存储明文的文件
+		tmpIniPath="/tmp/.h_ini.bak"
+		echo -e "${TEXT_INI}"|sed '/^'$name":/d"  > ${tmpIniPath}
+		encryptIni ${tmpIniPath} ${iniFile} ${FILE_PASSWORD}
 		if [ "$?" == "0" ]
 		then
 			echo -e  "\033[32m删除成功\033[0m"
 		else
 			echo -e "\033[31m删除失败\033[0m"
 		fi
+		rm -rf ${tmpIniPath}
 	fi
 }
 function goMeth(){
@@ -142,10 +193,10 @@ function goMeth(){
 	while [ "$name" == "" ]
 	do
 		echo -e "\033[32m请输入要跳转的机器名称name:\033[0m"
-		awk -F : '{print $1} END{print "---------"}' $iniFile
+		echo -e "${TEXT_INI}"|awk -F : '{print $1} END{print "---------"}'
 		read name
 	done
-	eval $(awk -F : '$1 ~ /^'$name'$/ {print "host="$2";port="$3";user="$4";desc="$5";passwd="$6}' $iniFile)
+	eval $(echo -e "${TEXT_INI}"|awk -F : '$1 ~ /^'$name'$/ {print "host="$2";port="$3";user="$4";desc="$5";passwd="$6}')
 
 	if [ "$host" == "" ]
 	then
@@ -165,7 +216,7 @@ function goMeth(){
             fi
 		else
 			sshStr="ssh"
-		fi 
+		fi
 		if [ "$3" != "" ]
 		then
 		 	user="$3"
@@ -175,7 +226,7 @@ function goMeth(){
 			expect {
 				\"yes/no\" { send \"yes\r\";exp_continue }
 				\"*assword\" { send \"$passwd\r\" }
-			}	
+			}
 			interact
 		"
 	fi
@@ -186,10 +237,10 @@ function tcpdumpMeth(){
 	while [ "$name" == "" ]
 	do
 		echo -e "\033[32m请输入要跳转的机器名称name:\033[0m"
-		awk -F : '{print $1} END{print "---------"}' $iniFile
+		echo -e "${TEXT_INI}"|awk -F : '{print $1} END{print "---------"}'
 		read name
 	done
-	eval $(awk -F : '$1 ~ /^'$name'$/ {print "host="$2";port="$3";user="$4";desc="$5";passwd="$6}' $iniFile)
+	eval $(echo -e "${TEXT_INI}"|awk -F : '$1 ~ /^'$name'$/ {print "host="$2";port="$3";user="$4";desc="$5";passwd="$6}')
 
 	if [ "$host" == "" ]
 	then
@@ -213,8 +264,8 @@ function scpMeth(){
 	elif [[ "$1" = 'upload' ]]
 	then
 		serverLink=$3
-	fi	
-	eval $(awk -F : '$1 ~ /^'$serverLink'$/ {print "host="$2";port="$3";user="$4";desc="$5";passwd="$6}' $iniFile)
+	fi
+	eval $(echo -e "${TEXT_INI}"|awk -F : '$1 ~ /^'$serverLink'$/ {print "host="$2";port="$3";user="$4";desc="$5";passwd="$6}')
 	if [ "$host" == "" ]
 	then
 		echo -e "\033[31m机器不存在\033[0m"
@@ -243,31 +294,40 @@ function scpMeth(){
 					\"*password\" { send \"$passwd\r\" }
 				}
 				interact
-
 			"
-		fi	
+		fi
 	fi
 }
 function helpMeth(){
 	case "$1"  in
-        list) echo -e "\033[32m命令:h_server list.\t\t查看已经存在的机器详细信息.\033[0m" ;;
-        add) echo -e "\033[32m命令:h_server add.\t\t添加服务器,按提示添加服务器信息\033[0m" ;;
-        edit) echo -e "\033[32m命令:h_server edit [name].\t\t编辑服务器,可以直接加机器名称,也可以根据提示输入机器名\033[0m" ;;
-        delete) echo -e "\033[32m命令:h_server delete [name].\t\t删除服务器,可以直接加机器名称,也可以根据提示输入机器名\033[0m" ;;
-        go) echo -e "\033[32m命令:h_server go [name] [meth] [user].\t\t跳转到服务器,有三种方式,ssh(默认),debug,sftp.\033[0m" ;;
-        tcpdump) echo -e "\033[32m命令:h_server tcpdump [name] [user].\t\t在mac上通过ssh对服务器进行实时抓包\033[0m" ;;
-        upload) echo -e "\033[32m命令:h_server upload [本地文件地址] [服务器名] [存放文件的远程服务器地址] [其他用户]\033[0m" ;;
-        download) echo -e "\033[32m命令:h_server scp download [服务器名] [远程服务器文件地址] [本地存放文件地址] [其他用户]\033[0m" ;;
-        *) echo -e "\033[32m请查看详细命令,命令有add,list,edit,delete,go,download,upload\033[0m" ;;
+		list)
+			echo -e "\033[32m命令:h_server list.\t\t查看已经存在的机器详细信息.\033[0m" ;;
+		add)
+			echo -e "\033[32m命令:h_server add.\t\t添加服务器,按提示添加服务器信息\033[0m" ;;
+		edit)
+			echo -e "\033[32m命令:h_server edit [name].\t\t编辑服务器,可以直接加机器名称,也可以根据提示输入机器名\033[0m" ;;
+		delete)
+			echo -e "\033[32m命令:h_server delete [name].\t\t删除服务器,可以直接加机器名称,也可以根据提示输入机器名\033[0m" ;;
+		go)
+			echo -e "\033[32m命令:h_server go [name] [meth] [user].\t\t跳转到服务器,有三种方式,ssh(默认),debug,sftp.\033[0m" ;;
+		tcpdump)
+			echo -e "\033[32m命令:h_server tcpdump [name] [user].\t\t在mac上通过ssh对服务器进行实时抓包\033[0m" ;;
+		upload)
+			echo -e "\033[32m命令:h_server upload [本地文件地址] [服务器名] [存放文件的远程服务器地址] [其他用户]\033[0m" ;;
+		download)
+			echo -e "\033[32m命令:h_server scp download [服务器名] [远程服务器文件地址] [本地存放文件地址] [其他用户]\033[0m" ;;
+		*)
+			echo -e "\033[32m请查看详细命令,命令有add,list,edit,delete,go,download,upload\033[0m" ;;
 	esac
 }
+checkPasswdFile
 case "$1" in
 	add)
 		addMeth ;;	#添加服务器
 	list)
 		listMeth ;;	#查看服务器列表
 	edit)
-		editMeth $2 ;; #修改服务器 
+		editMeth $2 ;; #修改服务器
 	delete)
 		deleteMeth $2 ;; #删除服务器
 	go)
