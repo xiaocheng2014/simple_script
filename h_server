@@ -181,6 +181,29 @@ function goMeth(){
 	fi
 
 }
+function tcpdumpMeth(){
+	name="$1"
+	while [ "$name" == "" ]
+	do
+		echo -e "\033[32m请输入要跳转的机器名称name:\033[0m"
+		awk -F : '{print $1} END{print "---------"}' $iniFile
+		read name
+	done
+	eval $(awk -F : '$1 ~ /^'$name'$/ {print "host="$2";port="$3";user="$4";desc="$5";passwd="$6}' $iniFile)
+
+	if [ "$host" == "" ]
+	then
+		echo -e "\033[31m机器不存在\033[0m"
+		return 0
+	else
+		if [ "$2" != "" ]
+		then
+			user="$2"
+		fi
+	        ssh ${user}@${host} -p ${port}  'sudo tcpdump -i any -s0 -nnn -U not port 22  -w - '|/Applications/Wireshark.app/Contents/MacOS/Wireshark -k -i - ;
+	fi
+
+}
 function scpMeth(){
 	scpStr="scp"
 	serverLink=""
@@ -232,6 +255,7 @@ function helpMeth(){
         edit) echo -e "\033[32m命令:h_server edit [name].\t\t编辑服务器,可以直接加机器名称,也可以根据提示输入机器名\033[0m" ;;
         delete) echo -e "\033[32m命令:h_server delete [name].\t\t删除服务器,可以直接加机器名称,也可以根据提示输入机器名\033[0m" ;;
         go) echo -e "\033[32m命令:h_server go [name] [meth] [user].\t\t跳转到服务器,有三种方式,ssh(默认),debug,sftp.\033[0m" ;;
+        tcpdump) echo -e "\033[32m命令:h_server tcpdump [name] [user].\t\t在mac上通过ssh对服务器进行实时抓包\033[0m" ;;
         upload) echo -e "\033[32m命令:h_server upload [本地文件地址] [服务器名] [存放文件的远程服务器地址] [其他用户]\033[0m" ;;
         download) echo -e "\033[32m命令:h_server scp download [服务器名] [远程服务器文件地址] [本地存放文件地址] [其他用户]\033[0m" ;;
         *) echo -e "\033[32m请查看详细命令,命令有add,list,edit,delete,go,download,upload\033[0m" ;;
@@ -248,6 +272,8 @@ case "$1" in
 		deleteMeth $2 ;; #删除服务器
 	go)
 		goMeth $2 $3 $4 $5 $6 ;; #ssh跳到服务器上
+	tcpdump)
+		tcpdumpMeth $2 $3 ;; #mac通过ssh使用wireshark抓包
 	upload)
 		scpMeth upload $2 $3 $4 $5;; #上传下载服务器
 	download)
@@ -255,5 +281,5 @@ case "$1" in
 	help)
 		helpMeth $2 ;; #命令帮助
 	*)
-		echo -e "\033[31mHelp :h_server [add|list|edit|delete|go|upload|download]\033[0m" ;;
+		echo -e "\033[31mHelp :h_server [add|list|tcpdump|edit|delete|go|upload|download]\033[0m" ;;
 esac
