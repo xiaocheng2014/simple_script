@@ -2,8 +2,21 @@
 iniFile="$HOME/.h_server/.ini"
 iniPasswdFile="$HOME/.h_server/.password"
 iniDir="$HOME/.h_server"
+iniPriFile="$HOME/.h_server/.ssh-pri"
+iniEnPriFile="$HOME/.h_server/.en-ssh-pri"
 FILE_PASSWORD=""
 TEXT_INI=""
+
+function createPri() {
+	expect -c "
+		spawn ssh-keygen -t rsa -C ssh@alliscoder.com -f ${iniPriFile};
+		expect {
+			\"Enter passphrase\" { send \"\n\r\";exp_continue }
+			\"Enter same passphrase\" { send \"\n\r\" }
+		}
+		interact
+	"
+}
 
 function encryptIni() {
 	# 待加密文件
@@ -42,6 +55,14 @@ function checkPasswdFile() {
 		echo "${FILE_PASSWORD}" > ${iniPasswdFile}
 	fi
 	FILE_PASSWORD="$(cat ${iniPasswdFile})"
+	if [ ! -f "${iniPriFile}" ]
+	then
+		if [ ! -f "${iniEnPriFile}" ]
+			createPri
+		then
+			decryptIni ${iniEnPriFile} ${FILE_PASSWORD} > ${iniPriFile}	
+		fi
+	fi
 	TEXT_INI="$(decryptIni ${iniFile} ${FILE_PASSWORD})"
 	TEXT_INI=$(echo -e "${TEXT_INI}"|sed '/^$/d')
 }
