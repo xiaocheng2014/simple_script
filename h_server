@@ -75,12 +75,17 @@ function listMeth(){
 		then
 			echo -e  "\033[31m没有添加任何机器\033[0m"
 		else
-			showList
+			showList $1
 		fi
 	fi
 }
 function showList(){
-	echo -e "${TEXT_INI}"|awk -F : '{print("--------------\r\n主机名:"$1"\r\nhost:"$2"\r\n端口号:"$3"\r\n默认用户名:"$4"\r\n描述、备注:"$5)}'
+	if [ "$1"  == "detail" ]
+	then
+		echo -e "${TEXT_INI}"|awk -F : '{print("--------------\r\n主机名:"$1"\r\nhost:"$2"\r\n端口号:"$3"\r\n默认用户名:"$4"\r\n描述、备注:"$5)}'
+	else
+		echo -e "${TEXT_INI}"|awk -F : '{print($1"("$2":"$3")")}'
+	fi
 }
 function addMeth(){
 	NAME=""
@@ -226,17 +231,17 @@ function goMeth(){
 	else
 		if [ "$2" == 'sftp' ]
 		then
-			sshStr='sftp'
+			sshStr="sftp -i ${iniPriFile}"
 		elif [ "$2" == 'debug' ]
 		then
             if [ "$4" != "" -a "$5" != "" ]
             then
-                sshStr='ssh -R $4:localhost:$5 '
+                sshStr="ssh -i ${iniPriFile} -R $4:localhost:$5 "
             else
-			    sshStr='ssh -R 9002:localhost:9002 '
+			    sshStr="ssh -i ${iniPriFile} -R 9002:localhost:9002 "
             fi
 		else
-			sshStr="ssh"
+			sshStr="ssh -i ${iniPriFile}"
 		fi
 		if [ "$3" != "" ]
 		then
@@ -272,7 +277,7 @@ function tcpdumpMeth(){
 		then
 			user="$2"
 		fi
-	        ssh ${user}@${host} -p ${port}  'sudo tcpdump -i any -s0 -nnn -U not port 22  -w - '|/Applications/Wireshark.app/Contents/MacOS/Wireshark -k -i - ;
+	        ssh -i ${iniPriFile} ${user}@${host} -p ${port}  'sudo tcpdump -i any -s0 -nnn -U not port 22  -w - '|/Applications/Wireshark.app/Contents/MacOS/Wireshark -k -i - ;
 	fi
 
 }
@@ -384,7 +389,7 @@ case "$1" in
 	add)
 		addMeth ;;	#添加服务器
 	list)
-		listMeth ;;	#查看服务器列表
+		listMeth $2 ;;	#查看服务器列表
 	edit)
 		editMeth $2 ;; #修改服务器
 	delete)
