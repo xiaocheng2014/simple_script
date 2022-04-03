@@ -58,13 +58,21 @@ function checkPasswdFile() {
 	if [ ! -f "${iniPriFile}" ]
 	then
 		if [ ! -f "${iniEnPriFile}" ]
-			createPri
 		then
+			createPri
+		else
 			decryptIni ${iniEnPriFile} ${FILE_PASSWORD} > ${iniPriFile}	
 		fi
 	fi
 	TEXT_INI="$(decryptIni ${iniFile} ${FILE_PASSWORD})"
 	TEXT_INI=$(echo -e "${TEXT_INI}"|sed '/^$/d')
+	TEXT_INI_WITH_NO=""
+	n=1
+	for i in ${TEXT_INI}; do
+		TEXT_INI_WITH_NO="${TEXT_INI_WITH_NO}\n${n}:${i}"
+		n=$(expr ${n} + 1)
+	done
+	TEXT_INI=$(echo -e "${TEXT_INI_WITH_NO}"|sed '/^$/d')
 }
 function listMeth(){
 	if [ ! -f "$iniFile" ]
@@ -82,11 +90,17 @@ function listMeth(){
 function showList(){
 	if [ "$1"  == "detail" ]
 	then
-		echo -e "${TEXT_INI}"|awk -F : '{print("--------------\r\n主机名:"$1"\r\nhost:"$2"\r\n端口号:"$3"\r\n默认用户名:"$4"\r\n描述、备注:"$5)}'
+		echo -e "${TEXT_INI}"|awk -F : '{print("\033[32m--------------\r\n序号:"$1"\r\n主机名:"$2"\r\nhost:"$3"\r\n端口号:"$4"\r\n默认用户名:"$5"\r\n描述、备注:"$6"\033[0m")}'
 	else
-		echo -e "${TEXT_INI}"|awk -F : '{print($1"("$2":"$3")")}'
+		echo -e "${TEXT_INI}"|awk -F : '{print("\033[32m"$1"-"$2"("$3":"$4")\033[0m")}'
 	fi
 }
+
+function deleteIniNo() {
+	filePath="$1"
+	sed -i 's/^[0-9]*://g' ${filePath}
+}
+
 function addMeth(){
 	NAME=""
 	while [ "$NAME" == "" ]
@@ -121,25 +135,36 @@ function addMeth(){
 	# 创建临时存储明文的文件
 	tmpIniPath="/tmp/.h_ini.bak"
 	echo -e "${TEXT_INI}" > ${tmpIniPath}
+	deleteIniNo ${tmpIniPath}
 	echo "$NAME:$HOST:$PORT:$USER:$DESC:$PASSWD" >> ${tmpIniPath}
 	encryptIni ${tmpIniPath} ${iniFile} ${FILE_PASSWORD}
 	rm -rf ${tmpIniPath}
 }
+
+
+
 function editMeth(){
-	name="$1"
-	while [ "$name" == "" ]
+	no="$1"
+	while [ "${no}" == "" ]
 	do
-		echo -e "\033[32m请输入要修改的机器名称name:\033[0m"
-		read name
+		echo -e "\033[32m请输入要修改的机器序号:\033[0m"
+		read no
 	done
 
-	eval $(echo -e "${TEXT_INI}"|awk -F : '$1 ~ /^'$name'$/ {print "host="$2";port="$3";user="$4";desc="$5";passwd="$6}')
+	eval $(echo -e "${TEXT_INI}"|awk -F : '$1 ~ /^'${no}'$/ {print "name="$2";host="$3";port="$4";user="$5";desc="$6";passwd="$7}')
 	if [ "$host" == "" ]
 	then
 		echo -e "\033[31m机器不存在\033[0m"
 		return -1
 	else
-		echo $host,$port,$user,$desc
+		echo $name,$host,$port,$user,$desc
+	fi
+
+	echo -e  "\033[32m请输入新的name(不更改直接回车,原name为"$name"):\033[0m"
+	read NAME
+	if [ "$NAME" == "" ]
+	then
+		NAME="$name"
 	fi
 
 	echo -e  "\033[32m请输入新的host(不更改直接回车,原host为"$host"):\033[0m"
@@ -178,7 +203,8 @@ function editMeth(){
 	fi
 	# 创建临时存储明文的文件
 	tmpIniPath="/tmp/.h_ini.bak"
-	echo -e "${TEXT_INI}"|sed "s/^"${name}":.*$/"$name":"$HOST":"$PORT":"$USER":"$DESC":"$PASSWD"/" > ${tmpIniPath}
+	echo -e "${TEXT_INI}"|sed "s/^"${no}":.*$/"$no":"$NAME":"$HOST":"$PORT":"$USER":"$DESC":"$PASSWD"/" > ${tmpIniPath}
+	deleteIniNo ${tmpIniPath}
 	encryptIni ${tmpIniPath} ${iniFile} ${FILE_PASSWORD}
 	if [ "$?" == "0" ]
 	then
@@ -189,21 +215,22 @@ function editMeth(){
 	rm -rf ${tmpIniPath}
 }
 function deleteMeth(){
-	name="$1"
-	while [ "$name" == "" ]
+	no="$1"
+	while [ "$no" == "" ]
 	do
-		echo -e "\033[32m请输入要删除的机器名称name:\033[0m"
-		read name
+		echo -e "\033[32m请输入要删除的机器序列号:\033[0m"
+		read no
 	done
 
-	flag=$(echo -e "${TEXT_INI}"|awk -F : '$1 ~ /^'$name'$/ {print "1"}')
+	flag=$(echo -e "${TEXT_INI}"|awk -F : '$1 ~ /^'$no'$/ {print "1"}')
 	if [ "$flag" == "" ]
 	then
 		echo -e "\033[32m该机器不存在\033[0m"
 	else
 		# 创建临时存储明文的文件
 		tmpIniPath="/tmp/.h_ini.bak"
-		echo -e "${TEXT_INI}"|sed '/^'$name":/d"  > ${tmpIniPath}
+		echo -e "${TEXT_INI}"|sed '/^'$no":/d"  > ${tmpIniPath}
+		deleteIniNo ${tmpIniPath}
 		encryptIni ${tmpIniPath} ${iniFile} ${FILE_PASSWORD}
 		if [ "$?" == "0" ]
 		then
@@ -215,14 +242,14 @@ function deleteMeth(){
 	fi
 }
 function goMeth(){
-	name="$1"
-	while [ "$name" == "" ]
+	no="$1"
+	while [ "$no" == "" ]
 	do
-		echo -e "\033[32m请输入要跳转的机器名称name:\033[0m"
-		echo -e "${TEXT_INI}"|awk -F : '{print $1} END{print "---------"}'
-		read name
+		echo -e "\033[32m请输入要跳转的机器序列号:\033[0m"
+		showList
+		read no
 	done
-	eval $(echo -e "${TEXT_INI}"|awk -F : '$1 ~ /^'$name'$/ {print "host="$2";port="$3";user="$4";desc="$5";passwd="$6}')
+	eval $(echo -e "${TEXT_INI}"|awk -F : '$1 ~ /^'$no'$/ {print "name="$2";host="$3";port="$4";user="$5";desc="$6";passwd="$7}')
 
 	if [ "$host" == "" ]
 	then
@@ -259,14 +286,14 @@ function goMeth(){
 
 }
 function tcpdumpMeth(){
-	name="$1"
-	while [ "$name" == "" ]
+	no="$1"
+	while [ "$no" == "" ]
 	do
-		echo -e "\033[32m请输入要跳转的机器名称name:\033[0m"
+		echo -e "\033[32m请输入要跳转的机器序列号:\033[0m"
 		echo -e "${TEXT_INI}"|awk -F : '{print $1} END{print "---------"}'
-		read name
+		read no
 	done
-	eval $(echo -e "${TEXT_INI}"|awk -F : '$1 ~ /^'$name'$/ {print "host="$2";port="$3";user="$4";desc="$5";passwd="$6}')
+	eval $(echo -e "${TEXT_INI}"|awk -F : '$1 ~ /^'$no'$/ {print "name="$2";host="$3";port="$4";user="$5";desc="$6";passwd="$7}')
 
 	if [ "$host" == "" ]
 	then
@@ -284,14 +311,14 @@ function tcpdumpMeth(){
 function scpMeth(){
 	scpStr="scp"
 	serverLink=""
-	if [[ "$1" = 'download' ]]
+	if [[ "$1" == 'download' ]]
 	then
 		serverLink=$2
-	elif [[ "$1" = 'upload' ]]
+	elif [[ "$1" == 'upload' ]]
 	then
 		serverLink=$3
 	fi
-	eval $(echo -e "${TEXT_INI}"|awk -F : '$1 ~ /^'$serverLink'$/ {print "host="$2";port="$3";user="$4";desc="$5";passwd="$6}')
+	eval $(echo -e "${TEXT_INI}"|awk -F : '$1 ~ /^'$serverLink'$/ {print "host="$3";port="$4";user="$5";desc="$6";passwd="$7}')
 	if [ "$host" == "" ]
 	then
 		echo -e "\033[31m机器不存在\033[0m"
@@ -302,20 +329,20 @@ function scpMeth(){
 			user="$5"
 		fi
 		serverLink=$user"@"$host
-		if [[ "$1" = 'download' ]]
+		if [[ "$1" == 'download' ]]
 		then
 			expect -c "
-				spawn scp -P ${port} ${serverLink}:$3 $4
+				spawn scp -i ${iniPriFile} -P ${port} ${serverLink}:$3 $4
 				expect {
 					\"*password\" { send \"$passwd\r\" }
 				}
 				interact
 
 			"
-		elif [[ "$1" = 'upload' ]]
+		elif [[ "$1" == 'upload' ]]
 		then
 			expect -c "
-				spawn scp -P ${port} $2 ${serverLink}:$4
+				spawn scp -i ${iniPriFile} -P ${port} $2 ${serverLink}:$4
 				expect {
 					\"*password\" { send \"$passwd\r\" }
 				}
@@ -358,29 +385,38 @@ function iniMeth() {
 		echo -e "\033[31m未知参数：${m},可输入参数为de:解密;en:加密\033[0m"
 		return -1
 	fi
-	srcPath="$2"
+	srcPath="$3"
 	if [[ "${srcPath}" == "" || ! -f "${srcPath}"  ]]
 	then
 		echo -e "\033[31m源文件地址不能为空且需存在,请检查文件路径是否正确\033[0m"
 		return -1
 	fi
-	destPath="$3"
-	if [ "${destPath}" == "" ]
+	destPath="$4"
+	if [[ "${destPath}" == "" && "${m}" == "en" ]]
 	then
 		echo -e "\033[31m目标文件不能为空\033[0m"
 		return -1
 	fi
-	tmpPd="$4"
+	tmpPd="$2"
 	if [ "${tmpPd}" == "" ]
 	then
 		echo -e "\033[31m密码不能为空\033[0m"
 		return -1
 	fi
+	if [ "${tmpPd}" == "self" ]
+	then
+		tmpPd=${FILE_PASSWORD}
+	fi
 	if [ "${m}" == "en" ]
 	then
 		encryptIni ${srcPath} ${destPath} ${tmpPd}
 	else
-		decryptIni ${srcPath} ${tmpPd} > ${destPath}
+		if [ "${destPath}" == ""  ]
+		then
+			decryptIni ${srcPath} ${tmpPd}
+		else
+			decryptIni ${srcPath} ${tmpPd} > ${destPath}
+		fi
 	fi
 }
 
