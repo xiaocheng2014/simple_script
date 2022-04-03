@@ -98,7 +98,7 @@ function showList(){
 
 function deleteIniNo() {
 	filePath="$1"
-	sed -i 's/^[0-9]*://g' ${filePath}
+	sed -i "" 's/^[0-9]*://g' ${filePath}
 }
 
 function addMeth(){
@@ -259,14 +259,6 @@ function goMeth(){
 		if [ "$2" == 'sftp' ]
 		then
 			sshStr="sftp -i ${iniPriFile}"
-		elif [ "$2" == 'debug' ]
-		then
-            if [ "$4" != "" -a "$5" != "" ]
-            then
-                sshStr="ssh -i ${iniPriFile} -R $4:localhost:$5 "
-            else
-			    sshStr="ssh -i ${iniPriFile} -R 9002:localhost:9002 "
-            fi
 		else
 			sshStr="ssh -i ${iniPriFile}"
 		fi
@@ -351,28 +343,6 @@ function scpMeth(){
 		fi
 	fi
 }
-function helpMeth(){
-	case "$1"  in
-		list)
-			echo -e "\033[32m命令:h_server list.\t\t查看已经存在的机器详细信息.\033[0m" ;;
-		add)
-			echo -e "\033[32m命令:h_server add.\t\t添加服务器,按提示添加服务器信息\033[0m" ;;
-		edit)
-			echo -e "\033[32m命令:h_server edit [name].\t\t编辑服务器,可以直接加机器名称,也可以根据提示输入机器名\033[0m" ;;
-		delete)
-			echo -e "\033[32m命令:h_server delete [name].\t\t删除服务器,可以直接加机器名称,也可以根据提示输入机器名\033[0m" ;;
-		go)
-			echo -e "\033[32m命令:h_server go [name] [meth] [user].\t\t跳转到服务器,有三种方式,ssh(默认),debug,sftp.\033[0m" ;;
-		tcpdump)
-			echo -e "\033[32m命令:h_server tcpdump [name] [user].\t\t在mac上通过ssh对服务器进行实时抓包\033[0m" ;;
-		upload)
-			echo -e "\033[32m命令:h_server upload [本地文件地址] [服务器名] [存放文件的远程服务器地址] [其他用户]\033[0m" ;;
-		download)
-			echo -e "\033[32m命令:h_server scp download [服务器名] [远程服务器文件地址] [本地存放文件地址] [其他用户]\033[0m" ;;
-		*)
-			echo -e "\033[32m请查看详细命令,命令有add,list,edit,delete,go,download,upload\033[0m" ;;
-	esac
-}
 
 function iniMeth() {
 	m="$1"
@@ -420,28 +390,86 @@ function iniMeth() {
 	fi
 }
 
-checkPasswdFile
-case "$1" in
-	add)
-		addMeth ;;	#添加服务器
-	list)
-		listMeth $2 ;;	#查看服务器列表
-	edit)
-		editMeth $2 ;; #修改服务器
-	delete)
-		deleteMeth $2 ;; #删除服务器
-	go)
-		goMeth $2 $3 $4 $5 $6 ;; #ssh跳到服务器上
-	tcpdump)
-		tcpdumpMeth $2 $3 ;; #mac通过ssh使用wireshark抓包
-	upload)
-		scpMeth upload $2 $3 $4 $5;; #上传下载服务器
-	download)
-		scpMeth download $2 $3 $4 $5;; #上传下载服务器
-	ini)
-		iniMeth $2 $3 $4 $5;; # 配置文件的加解密
-	help)
-		helpMeth $2 ;; #命令帮助
-	*)
-		echo -e "\033[31mHelp :h_server [add|list|tcpdump|ini|edit|delete|go|upload|download]\033[0m" ;;
-esac
+function helpMeth(){
+	case "$1"  in
+		list)
+			echo -e "\033[32m命令:list [detail].\n\r\t\t查看已经存在的机器详细信息,带上detail参数则显示更详细信息.\033[0m" ;;
+		add)
+			echo -e "\033[32m命令:add.\n\r\t\t交互式添加服务器,按提示添加服务器信息\033[0m" ;;
+		edit)
+			echo -e "\033[32m命令:edit [{机器序号}].\n\r\t\t编辑服务器,可以直接加机器序号,也可以根据提示输入机器序号\033[0m" ;;
+		delete)
+			echo -e "\033[32m命令:delete [{机器序号}].\n\r\t\t删除服务器,可以直接加机器序号,也可以根据提示输入机器序号\033[0m" ;;
+		go)
+			echo -e "\033[32m命令:go [{机器序列号}] [{使用方式:ssh|sftp}] [{使用其他用户名}].\n\r\t\t登录到服务器,有三种方式,ssh(默认),sftp.\033[0m" ;;
+		tcpdump)
+			echo -e "\033[32m命令:tcpdump [{机器序列号}] [{使用其他用户名}].\n\r\t\t在mac上通过ssh对服务器进行实时抓包\033[0m" ;;
+		upload)
+			echo -e "\033[32m命令:upload {本地文件地址} {服务器序列号} {存放文件的远程服务器地址} [{使用其他用户名}]\n\r\033[0m" ;;
+		download)
+			echo -e "\033[32m命令:download {服务器序列号} {远程服务器文件地址} {本地存放文件地址} [{使用其他用户名}]\n\r\033[0m" ;;
+		encry)
+			echo -e "\033[32m命令:encry {密码:self为特殊字符串,从密码密码文件中读取} {待加密文件地址} {加密文件地址}\n\r\033[0m" ;;
+		decry)
+			echo -e "\033[32m命令:download {密码:self为特殊字符串,从密码密码文件中读取} {加密文件地址} [{明文文件地址:不填写则输出在界面}]\n\r\033[0m" ;;
+		*)
+			echo -e "\033[32m请查看详细命令,命令有add,list,edit,delete,go,download,upload,encry,decry\n\r\033[0m" ;;
+	esac
+}
+
+function h_server_main() {
+	case "$1" in
+		add)
+			addMeth ;;	#添加服务器
+		list)
+			listMeth $2 ;;	#查看服务器列表
+		edit)
+			editMeth $2 ;; #修改服务器
+		delete)
+			deleteMeth $2 ;; #删除服务器
+		go)
+			goMeth $2 $3 $4 ;; #ssh跳到服务器上
+		tcpdump)
+			tcpdumpMeth $2 $3 ;; #mac通过ssh使用wireshark抓包
+		upload)
+			scpMeth upload $2 $3 $4 $5;; #上传下载服务器
+		download)
+			scpMeth download $2 $3 $4 $5;; #上传下载服务器
+		encry)  
+			iniMeth en $2 $3 $4;; # 文件加密
+		decry)
+			iniMeth de $2 $3 $4;; # 文件解密
+		help)
+			helpMeth $2 ;; #命令帮助
+		exit)
+			echo -e "\033[32m欢迎下次使用\033[0m" ;;
+		*)
+			echo -e "\033[31mHelp :h_server [add|list|edit|delete|go|download|upload|encry|decry]\033[0m" ;;
+	esac
+}
+
+if [[ "$1" == ""  ]]
+then
+	checkPasswdFile
+	h_server_main list
+	helpMeth add
+	helpMeth list	
+	helpMeth edit
+	helpMeth delete
+	helpMeth go
+	helpMeth download
+	helpMeth upload
+	helpMeth encry
+	helpMeth decry
+	read h_command
+	while [ "${h_command}" == "" ]
+	do
+		read h_command
+	done
+	h_server_main ${h_command}
+	
+else
+	checkPasswdFile
+	h_server_main $1 $2 $3 $4 $5
+fi
+
