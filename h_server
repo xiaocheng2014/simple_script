@@ -1,9 +1,12 @@
 #!/bin/bash
-iniFile="$HOME/.h_server/.ini"
+iniFileName="ini"
+iniFile="$HOME/.h_server/.${iniFileName}"
 iniPasswdFile="$HOME/.h_server/.password"
 iniDir="$HOME/.h_server"
-iniPriFile="$HOME/.h_server/.ssh-pri"
-iniEnPriFile="$HOME/.h_server/.en-ssh-pri"
+iniPriFileName="ssh-pri"
+iniEnPriFileName="en-ssh-pri"
+iniPriFile="$HOME/.h_server/.${iniPriFileName}"
+iniEnPriFile="$HOME/.h_server/.${iniPriFileName}"
 FILE_PASSWORD=""
 TEXT_INI=""
 
@@ -61,7 +64,7 @@ function checkPasswdFile() {
 		then
 			createPri
 		else
-			decryptIni ${iniEnPriFile} ${FILE_PASSWORD} > ${iniPriFile}	
+			decryptIni ${iniEnPriFile} ${FILE_PASSWORD} > ${iniPriFile}
 		fi
 	fi
 	TEXT_INI="$(decryptIni ${iniFile} ${FILE_PASSWORD})"
@@ -358,7 +361,7 @@ function iniMeth() {
 	srcPath="$3"
 	if [[ "${srcPath}" == "" || ! -f "${srcPath}"  ]]
 	then
-		echo -e "\033[31m源文件地址不能为空且需存在,请检查文件路径是否正确\033[0m"
+		echo -e "\033[31m源文件地址:${srcPath},不能为空且需存在,请检查文件路径是否正确\033[0m"
 		return -1
 	fi
 	destPath="$4"
@@ -390,6 +393,68 @@ function iniMeth() {
 	fi
 }
 
+function exportMeth() {
+	cp ${iniFile} `pwd`/${iniFileName}
+	encryptIni ${iniPriFile} `pwd`/${iniEnPriFileName} ${FILE_PASSWORD}
+}
+
+function importMeth() {
+	importIniFilePath="$1"	
+	while [ "${importIniFilePath}" == "" ]
+	do
+		echo -e "\033[32m请输入加密配置文件路径:\033[0m"
+		read importIniFilePath 
+	done
+	importPriFilePath="$2"
+	while [ "${importPriFilePath}" == "" ]
+	do
+		echo -e "\033[32m请输入加密私钥文件路径:\033[0m"
+		read importPriFilePath 
+	done
+	importPasswd="$3"
+	while [ "${importPasswd}" == "" ]
+	do
+		echo -e "\033[32m请输入加密密码:\033[0m"
+		read importPasswd
+	done
+	cat ${importIniFilePath} > ${iniFile}
+	cat ${importPriFilePath} > ${iniEnPriFile}
+	echo "${importPasswd}" > ${iniPasswdFile}
+}
+
+function changePasswdMeth() {
+	oldPasswd="$1"
+	while [ "${oldPasswd}" == "" ]
+	do
+		echo -e "\033[32m请输入当前密码:\033[0m"
+		read oldPasswd 
+	done
+	newPasswd="$2"
+	while [ "${newPasswd}" == "" ]
+	do
+		echo -e "\033[32m请输入新密码:\033[0m"
+		read newPasswd
+	done
+	decryTxt="$(decryptIni ${iniFile} ${oldPasswd})"
+	echo -e "\033[32m当前密码解密后内容如下:\033[0m"
+	echo -e "${decryTxt}"
+	echo -e "\033[33m是否正常使用新密码进行加密(Y/n)\033[0m"
+	read change_confirm
+	if [[ "${change_confirm}" == "" || "${change_confirm}" == "Y" || "${change_confirm}" == "y" ]]
+	then
+		# 创建临时存储明文的文件
+		tmpIniPath="/tmp/.h_ini.bak"
+		decryptIni ${iniFile} ${oldPasswd} > ${tmpIniPath}
+		encryptIni ${tmpIniPath} ${iniFile} ${newPasswd}
+		echo ${newPasswd} > ${iniPasswdFile}
+		echo -e "\033[32m密码修改成功\033[0m"
+	else
+		echo -e "\033[32m您已退出密码修改\033[0m"
+		exit 0
+	fi
+
+}
+
 function helpMeth(){
 	case "$1"  in
 		list)
@@ -405,15 +470,25 @@ function helpMeth(){
 		tcpdump)
 			echo -e "\033[32m命令:tcpdump [{机器序列号}] [{使用其他用户名}].\n\r\t\t在mac上通过ssh对服务器进行实时抓包\033[0m" ;;
 		upload)
-			echo -e "\033[32m命令:upload {本地文件地址} {服务器序列号} {存放文件的远程服务器地址} [{使用其他用户名}]\n\r\033[0m" ;;
+			echo -e "\033[32m命令:upload {本地文件地址} {服务器序列号} {存放文件的远程服务器地址} [{使用其他用户名}]\n\r\t\t上传文件到指定服务器\033[0m" ;;
 		download)
-			echo -e "\033[32m命令:download {服务器序列号} {远程服务器文件地址} {本地存放文件地址} [{使用其他用户名}]\n\r\033[0m" ;;
+			echo -e "\033[32m命令:download {服务器序列号} {远程服务器文件地址} {本地存放文件地址} [{使用其他用户名}]\n\r\t\t从服务器上下载文件\033[0m" ;;
 		encry)
-			echo -e "\033[32m命令:encry {密码:self为特殊字符串,从密码密码文件中读取} {待加密文件地址} {加密文件地址}\n\r\033[0m" ;;
+			echo -e "\033[32m命令:encry {密码:self为特殊字符串,从密码密码文件中读取} {待加密文件地址} {加密文件地址}\n\r\t\t加密文件\033[0m" ;;
 		decry)
-			echo -e "\033[32m命令:download {密码:self为特殊字符串,从密码密码文件中读取} {加密文件地址} [{明文文件地址:不填写则输出在界面}]\n\r\033[0m" ;;
+			echo -e "\033[32m命令:decry {密码:self为特殊字符串,从密码密码文件中读取} {加密文件地址} [{明文文件地址:不填写则输出在界面}]\n\r\t\t解密文件\033[0m" ;;
+		getPub)
+			echo -e "\033[32m命令:getPub \n\r\t\t获取公钥\033[0m" ;;
+		export)
+			echo -e "\033[32m命令:export \n\r\t\t导出加密配置到当前文件夹,${iniFileName}为服务器配置,${iniEnPriFileName}为私钥文件\033[0m" ;;
+		import)
+			echo -e "\033[32m命令:import [{加密配置文件}] [{加密私钥文件}] [{密码}] \n\r\t\t导入配置\033[0m" ;;
+		changePasswd)
+			echo -e "\033[32m命令:changePasswd [{当前密码}] [{新密码}] \n\r\t\t更换加密密码\033[0m" ;;
+		exit)
+			echo -e "\033[33m输入exit或q直接退出\033[0m" ;;
 		*)
-			echo -e "\033[32m请查看详细命令,命令有add,list,edit,delete,go,download,upload,encry,decry\n\r\033[0m" ;;
+			echo -e "\033[32m请查看详细命令,命令有add,list,edit,delete,go,download,upload,encry,decry,getPub,export,import,changePasswd\n\r\033[0m" ;;
 	esac
 }
 
@@ -441,10 +516,18 @@ function h_server_main() {
 			iniMeth de $2 $3 $4;; # 文件解密
 		help)
 			helpMeth $2 ;; #命令帮助
-		exit)
+		getPub)
+			ssh-keygen -y -f ${iniPriFile} ;;
+		export)
+			exportMeth ;;
+		import)
+			importMeth $2 $3 $4 ;;
+		changePasswd)
+			changePasswdMeth $2 $3 ;;
+		exit|q)
 			echo -e "\033[32m欢迎下次使用\033[0m" ;;
 		*)
-			echo -e "\033[31mHelp :h_server [add|list|edit|delete|go|download|upload|encry|decry]\033[0m" ;;
+			echo -e "\033[31mHelp :h_server [add|list|edit|delete|go|download|upload|encry|decry|getPub|export|import|changePasswd]\033[0m" ;;
 	esac
 }
 
@@ -461,6 +544,11 @@ then
 	helpMeth upload
 	helpMeth encry
 	helpMeth decry
+	helpMeth getPub
+	helpMeth export
+	helpMeth import
+	helpMeth changePasswd
+	helpMeth exit
 	read h_command
 	while [ "${h_command}" == "" ]
 	do
