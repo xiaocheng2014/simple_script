@@ -450,7 +450,7 @@ function changePasswdMeth() {
 		echo -e "\033[32m密码修改成功\033[0m"
 	else
 		echo -e "\033[32m您已退出密码修改\033[0m"
-		exit 0
+		return 0
 	fi
 
 }
@@ -488,8 +488,30 @@ function helpMeth(){
 		exit)
 			echo -e "\033[33m输入exit或q直接退出\033[0m" ;;
 		*)
-			echo -e "\033[32m请查看详细命令,命令有add,list,edit,delete,go,download,upload,encry,decry,getPub,export,import,changePasswd\n\r\033[0m" ;;
+			helpAll ;;
 	esac
+}
+
+function exitMeth() {
+	echo -e "\033[32m欢迎下次使用\033[0m"
+	exit 0
+}
+
+function helpAll() {
+	helpMeth add
+	helpMeth list	
+	helpMeth edit
+	helpMeth delete
+	helpMeth go
+	helpMeth download
+	helpMeth upload
+	helpMeth encry
+	helpMeth decry
+	helpMeth getPub
+	helpMeth export
+	helpMeth import
+	helpMeth changePasswd
+	helpMeth exit
 }
 
 function h_server_main() {
@@ -525,7 +547,7 @@ function h_server_main() {
 		changePasswd)
 			changePasswdMeth $2 $3 ;;
 		exit|q)
-			echo -e "\033[32m欢迎下次使用\033[0m" ;;
+			exitMeth ;;
 		*)
 			echo -e "\033[31mHelp :h_server [add|list|edit|delete|go|download|upload|encry|decry|getPub|export|import|changePasswd]\033[0m" ;;
 	esac
@@ -533,28 +555,20 @@ function h_server_main() {
 
 if [[ "$1" == ""  ]]
 then
-	checkPasswdFile
-	h_server_main list
-	helpMeth add
-	helpMeth list	
-	helpMeth edit
-	helpMeth delete
-	helpMeth go
-	helpMeth download
-	helpMeth upload
-	helpMeth encry
-	helpMeth decry
-	helpMeth getPub
-	helpMeth export
-	helpMeth import
-	helpMeth changePasswd
-	helpMeth exit
-	read h_command
-	while [ "${h_command}" == "" ]
+	helpAll
+	while [ true ]
 	do
+		checkPasswdFile
+		h_server_main list
+		echo -e "\033[31m请输入指令:\033[0m"
 		read h_command
+		while [ "${h_command}" == "" ]
+		do
+			echo -e "\033[31m请输入指令:\033[0m"
+			read h_command
+		done
+		h_server_main ${h_command}	
 	done
-	h_server_main ${h_command}
 	
 else
 	checkPasswdFile
