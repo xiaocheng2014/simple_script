@@ -142,6 +142,7 @@ function addMeth(){
 	echo "$NAME:$HOST:$PORT:$USER:$DESC:$PASSWD" >> ${tmpIniPath}
 	encryptIni ${tmpIniPath} ${iniFile} ${FILE_PASSWORD}
 	rm -rf ${tmpIniPath}
+	echo -e "\033[32m添加完成\033[0m"
 }
 
 
