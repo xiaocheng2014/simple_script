@@ -67,6 +67,7 @@ function checkPasswdFile() {
 		else
 			decryptIni ${iniEnPriFile} ${FILE_PASSWORD} > ${iniPriFile}
 		fi
+		chmod 600 ${iniPriFile}
 	fi
 	TEXT_INI="$(decryptIni ${iniFile} ${FILE_PASSWORD})"
 	TEXT_INI=$(echo -e "${TEXT_INI}"|sed '/^$/d')
