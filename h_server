@@ -425,7 +425,7 @@ function importMeth() {
 	if [[ "${importPriFilePath}" != "" ]]
 	then
 		cat ${importPriFilePath} > ${iniEnPriFile}
-		rm -rf ${iniPriFile}
+		rm -rf ${iniPriFile}*
 	fi
 }
 
