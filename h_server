@@ -7,7 +7,7 @@ iniDir="$HOME/.h_server"
 iniPriFileName="ssh-pri"
 iniEnPriFileName="en-ssh-pri"
 iniPriFile="$HOME/.h_server/.${iniPriFileName}"
-iniEnPriFile="$HOME/.h_server/.${iniPriFileName}"
+iniEnPriFile="$HOME/.h_server/.${iniEnPriFileName}"
 FILE_PASSWORD=""
 TEXT_INI=""
 
