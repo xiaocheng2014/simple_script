@@ -398,27 +398,30 @@ function exportMeth() {
 }
 
 function importMeth() {
-	importIniFilePath="$1"	
-	while [ "${importIniFilePath}" == "" ]
-	do
-		echo -e "\033[32m请输入加密配置文件路径:\033[0m"
-		read importIniFilePath 
-	done
-	importPriFilePath="$2"
-	while [ "${importPriFilePath}" == "" ]
-	do
-		echo -e "\033[32m请输入加密私钥文件路径:\033[0m"
-		read importPriFilePath 
-	done
-	importPasswd="$3"
+	importPasswd="$1"
 	while [ "${importPasswd}" == "" ]
 	do
 		echo -e "\033[32m请输入加密密码:\033[0m"
 		read importPasswd
 	done
-	cat ${importIniFilePath} > ${iniFile}
-	cat ${importPriFilePath} > ${iniEnPriFile}
+	if [[ "${importPasswd}" == "self" ]]
+	then
+		importPasswd=${FILE_PASSWORD}
+	fi
 	echo "${importPasswd}" > ${iniPasswdFile}
+	importIniFilePath="$2"	
+	while [ "${importIniFilePath}" == "" ]
+	do
+		echo -e "\033[32m请输入加密配置文件路径:\033[0m"
+		read importIniFilePath 
+	done
+	cat ${importIniFilePath} > ${iniFile}
+	importPriFilePath="$3"
+	if [[ "${importPriFilePath}" != "" ]]
+	then
+		cat ${importPriFilePath} > ${iniEnPriFile}
+		rm -rf ${iniPriFile}
+	fi
 }
 
 function changePasswdMeth() {
@@ -480,7 +483,7 @@ function helpMeth(){
 		export)
 			echo -e "\033[32m命令:export \n\r\t\t导出加密配置到当前文件夹,${iniFileName}为服务器配置,${iniEnPriFileName}为私钥文件\033[0m" ;;
 		import)
-			echo -e "\033[32m命令:import [{加密配置文件}] [{加密私钥文件}] [{密码}] \n\r\t\t导入配置\033[0m" ;;
+			echo -e "\033[32m命令:import {密码:self为特殊字符串,从密码密码文件中读取} {加密配置文件} [{加密私钥文件}] \n\r\t\t导入配置\033[0m" ;;
 		changePasswd)
 			echo -e "\033[32m命令:changePasswd [{当前密码}] [{新密码}] \n\r\t\t更换加密密码\033[0m" ;;
 		exit)
