@@ -512,6 +512,7 @@ function helpAll() {
 	helpMeth go
 	helpMeth download
 	helpMeth upload
+	helpMeth tcpdump
 	helpMeth encry
 	helpMeth decry
 	helpMeth getPub
