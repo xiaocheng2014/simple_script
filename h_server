@@ -285,6 +285,51 @@ function goMeth(){
 	fi
 
 }
+function goRootMeth(){
+	no="$1"
+	while [ "$no" == "" ]
+	do
+		echo -e "\033[32m请输入要跳转的机器序列号:\033[0m"
+		showList
+		read no
+	done
+	eval $(echo -e "${TEXT_INI}"|awk -F : '$1 ~ /^'$no'$/ {print "name="$2";host="$3";port="$4";user="$5";desc="$6";passwd="$7}')
+
+	if [ "$host" == "" ]
+	then
+		echo -e "\033[31m机器不存在\033[0m"
+		return -1
+	else
+		sshStr="ssh -i ${iniPriFile}"
+		if [ "$2" != "" ]
+		then
+		 	user="$2"
+		fi
+		if [ "${name}" != "root" ]
+		then
+			expect -c "
+				spawn $sshStr ${user}@${host} -p ${port};
+				expect {
+					\"yes/no\" { send \"yes\r\";exp_continue }
+					\"*assword\" { send \"$passwd\r\";exp_continue }
+					\"*Last login\" { send \"sudo -i\r\";exp_continue }
+					\"*assword\" { send \"$passwd\r\" }
+				}
+				interact
+			"
+		else
+			expect -c "
+				spawn $sshStr ${user}@${host} -p ${port};
+				expect {
+					\"yes/no\" { send \"yes\r\";exp_continue }
+					\"*assword\" { send \"$passwd\r\" }
+				}
+				interact
+			"
+		fi
+	fi
+
+}
 function tcpdumpMeth(){
 	no="$1"
 	while [ "$no" == "" ]
@@ -474,6 +519,8 @@ function helpMeth(){
 			echo -e "\033[32m命令:delete [{机器序号}].\n\r\t\t删除服务器,可以直接加机器序号,也可以根据提示输入机器序号\033[0m" ;;
 		go)
 			echo -e "\033[32m命令:go [{机器序列号}] [{使用方式:ssh|sftp}] [{使用其他用户名}].\n\r\t\t登录到服务器,有三种方式,ssh(默认),sftp.\033[0m" ;;
+		goroot)
+			echo -e "\033[32m命令:goroot [{机器序列号}] [{使用其他用户名}].\n\r\t\t登录到服务器,并切换到root.\033[0m" ;;
 		tcpdump)
 			echo -e "\033[32m命令:tcpdump [{机器序列号}] [{使用其他用户名}].\n\r\t\t在mac上通过ssh对服务器进行实时抓包\033[0m" ;;
 		upload)
@@ -534,6 +581,8 @@ function h_server_main() {
 			deleteMeth $2 ;; #删除服务器
 		go)
 			goMeth $2 $3 $4 ;; #ssh跳到服务器上
+		goroot)
+			goRootMeth $2 $3 $4 ;; #ssh跳到服务器上并自动切到root
 		tcpdump)
 			tcpdumpMeth $2 $3 ;; #mac通过ssh使用wireshark抓包
 		upload)
