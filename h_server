@@ -275,11 +275,11 @@ function goMeth(){
 		 	user="$3"
 		fi
 		expect -c "
+			set timeout 5
 			spawn $sshStr ${user}@${host} -p ${port};
 			expect {
 				\"yes/no\" { send \"yes\r\";exp_continue }
-				\"*assword\" { send \"$passwd\r\";exp_continue }
-				\"*\" { }
+				\"*assword\" { send \"$passwd\r\";exp_continue}
 			}
 			interact
 		"
@@ -309,23 +309,23 @@ function goRootMeth(){
 		if [ "${name}" != "root" ]
 		then
 			expect -c "
+				set timeout 5
 				spawn $sshStr ${user}@${host} -p ${port};
 				expect {
 					\"yes/no\" { send \"yes\r\";exp_continue }
 					\"*assword\" { send \"$passwd\r\";exp_continue }
 					\"*Last login\" { send \"sudo -i\r\";exp_continue }
 					\"*assword\" { send \"$passwd\r\";exp_continue }
-					\"*\" { }
 				}
 				interact
 			"
 		else
 			expect -c "
+				set timeout 5
 				spawn $sshStr ${user}@${host} -p ${port};
 				expect {
 					\"yes/no\" { send \"yes\r\";exp_continue }
 					\"*assword\" { send \"$passwd\r\";exp_continue }
-					\"*\" { }
 				}
 				interact
 			"
