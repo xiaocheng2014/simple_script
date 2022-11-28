@@ -1,0 +1,57 @@
+#!/bin/bash
+
+# 需要安装airport aircrack-ng
+
+function showUseTime() {
+	seconds=$1
+	hour=$(( $seconds/3600 ))
+	if [[ ${hour} -lt 10 ]]
+	then
+		hourStr="0${hour}"
+	else
+		hourStr="${hour}"
+	fi
+	min=$(( ($seconds-${hour}*3600)/60 ))
+	if [[ ${min} -lt 10 ]]
+	then
+		minStr="0${min}"
+	else
+		minStr="${min}"
+	fi
+	sec=$(( $seconds-${hour}*3600-${min}*60 ))
+	if [[ ${sec} -lt 10 ]]
+	then
+		secStr="0${sec}"
+	else
+		secStr="${sec}"
+	fi
+	echo -en "\r\033[32m抓取所用时间:${hourStr}:${minStr}:${secStr}\033[0m"
+}
+
+airport -s
+
+channel=""
+
+while [ "${channel}" == ""  ]
+do
+	echo -e "\033[32m请输入CHANNEL\033[0m";
+	read channel
+done
+rm -rf /tmp/airport*
+airport en0 sniff ${channel} &
+airPortPid="$!"
+airStop=""
+airTime=0
+
+echo -e "\033[32m停止抓包,请按Ctrl + c\033[0m";
+wifiQuit=0
+trap "airStop=q" 2
+while [ "${airStop}" != "q" ]
+do
+	sleep 1
+	airTime=`expr ${airTime} + 1`
+	showUseTime ${airTime}
+done
+
+echo -e "\033[32m正在分析数据包\033[0m";
+aircrack-ng -w ~/data/wifi/jikefeng.txt /tmp/airport*.cap
