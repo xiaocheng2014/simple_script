@@ -316,6 +316,7 @@ function goRootMeth(){
 					\"*assword\" { send \"$passwd\r\";exp_continue }
 					\"*Last login\" { send \"sudo -i\r\";exp_continue }
 					\"*assword\" { send \"$passwd\r\";exp_continue }
+					\"*的密码\" { send \"$passwd\r\";exp_continue }
 				}
 				interact
 			"
