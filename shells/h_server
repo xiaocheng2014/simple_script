@@ -552,8 +552,6 @@ function helpMeth(){
 
 function exitMeth() {
 	echo -e "\033[32m欢迎下次使用\033[0m"
-	tput rmcup
-	tput rmso
 	exit 0
 }
 
@@ -618,13 +616,11 @@ function h_server_main() {
 
 if [[ "$1" == ""  ]]
 then
-	tput smso
-	tput smcup
-	checkPasswdFile
-	h_server_main list
+	helpAll
 	while [ true ]
 	do
 		checkPasswdFile
+		h_server_main list
 		echo -e "\033[31m请输入指令:\033[0m"
 		read h_command
 		while [ "${h_command}" == "" ]
@@ -632,15 +628,11 @@ then
 			echo -e "\033[31m请输入指令:\033[0m"
 			read h_command
 		done
-		clear
 		h_server_main ${h_command}	
 	done
 	
 else
-	tput smcup
 	checkPasswdFile
-	clear
 	h_server_main $1 $2 $3 $4 $5
-	exitMeth
 fi
 
