@@ -574,19 +574,39 @@ function helpAll() {
 }
 
 function h_server_main() {
+  clear_cmd='echo -e "\n"'
+  list_cmd='echo -e "\n"'
+  if [ "$1" == "gui" ]; then
+    shift
+    clear_cmd="clear"
+    list_cmd="h_server_main list"
+  fi
 	case "$1" in
 		add)
-			addMeth ;;	#添加服务器
+			addMeth #添加服务器
+      eval "${list_cmd}"
+      ;;
 		list)
-			listMeth $2 ;;	#查看服务器列表
+			listMeth $2 #查看服务器列表
+      ;;
 		edit)
-			editMeth $2 ;; #修改服务器
+			editMeth $2 #修改服务器
+      eval "${list_cmd}"
+      ;;
 		delete)
-			deleteMeth $2 ;; #删除服务器
+			deleteMeth $2  #删除服务器
+      eval "${list_cmd}"
+      ;;
 		go)
-			goMeth $2 $3 $4 ;; #ssh跳到服务器上
+      eval "${clear_cmd}"
+			goMeth $2 $3 $4  #ssh跳到服务器上
+      eval "${list_cmd}"
+      ;;
 		goroot)
-			goRootMeth $2 $3 $4 ;; #ssh跳到服务器上并自动切到root
+      eval "${clear_cmd}"
+			goRootMeth $2 $3 $4 #ssh跳到服务器上并自动切到root
+      eval "${list_cmd}"
+      ;;
 		tcpdump)
 			tcpdumpMeth $2 $3 ;; #mac通过ssh使用wireshark抓包
 		upload)
@@ -617,10 +637,10 @@ function h_server_main() {
 if [[ "$1" == ""  ]]
 then
 	helpAll
+	checkPasswdFile
+	h_server_main list
 	while [ true ]
 	do
-		checkPasswdFile
-		h_server_main list
 		echo -e "\033[31m请输入指令:\033[0m"
 		read h_command
 		while [ "${h_command}" == "" ]
@@ -628,7 +648,8 @@ then
 			echo -e "\033[31m请输入指令:\033[0m"
 			read h_command
 		done
-		h_server_main ${h_command}	
+		h_server_main gui ${h_command}	
+	  checkPasswdFile
 	done
 	
 else
